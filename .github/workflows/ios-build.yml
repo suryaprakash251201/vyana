@@ -50,15 +50,30 @@ jobs:
         run: |
           flutter build ios --release --no-codesign
 
-      - name: Compress iOS build
+      - name: Create IPA for Sideloadly
         run: |
+          # Create Payload directory structure required for IPA
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          
+          # Create IPA file (IPA is just a zip with Payload folder)
+          zip -r Vyana.ipa Payload
+          
+          # Also create the zip for reference
           cd build/ios/iphoneos
           zip -r ../../../ios-release.zip Runner.app
 
-      - name: Upload iOS artifact
+      - name: Upload IPA for Sideloadly
         uses: actions/upload-artifact@v4
         with:
-          name: ios-release-build
+          name: vyana-ipa-sideloadly
+          path: apps/vyana_flutter/Vyana.ipa
+          retention-days: 14
+
+      - name: Upload iOS app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-bundle
           path: apps/vyana_flutter/ios-release.zip
           retention-days: 14
 
@@ -68,6 +83,11 @@ jobs:
           echo "✅ iOS build completed successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **ios-release-build**: Unsigned .app bundle (zip)" >> $GITHUB_STEP_SUMMARY
+          echo "- **vyana-ipa-sideloadly**: Unsigned IPA for Sideloadly/3uTools" >> $GITHUB_STEP_SUMMARY
+          echo "- **ios-app-bundle**: Raw .app bundle (zip)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> **Note**: This is an unsigned build. To distribute via TestFlight or App Store, code signing is required." >> $GITHUB_STEP_SUMMARY
+          echo "### Installation Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download **vyana-ipa-sideloadly** artifact" >> $GITHUB_STEP_SUMMARY
+          echo "2. Open Sideloadly and sign in with Apple ID" >> $GITHUB_STEP_SUMMARY
+          echo "3. Connect iPhone and drag the IPA file" >> $GITHUB_STEP_SUMMARY
+          echo "4. Click Start to sign and install" >> $GITHUB_STEP_SUMMARY
