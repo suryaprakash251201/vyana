@@ -6,8 +6,10 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from app.config import settings
 
-# Database for tokens
-DB_PATH = "vyana.db"
+# Database for tokens - use DATA_DIR for Docker compatibility
+DATA_DIR = os.environ.get("DATA_DIR", ".")
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "vyana.db")
 
 class OAuthService:
     def __init__(self, db_path=DB_PATH):
