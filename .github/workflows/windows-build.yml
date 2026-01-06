@@ -1,0 +1,61 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+      - '.github/workflows/windows-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows App
+    runs-on: windows-latest
+    
+    defaults:
+      run:
+        working-directory: apps/vyana_flutter
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Compress Windows build
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath Vyana-Windows.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyana-windows-release
+          path: apps/vyana_flutter/Vyana-Windows.zip
+          retention-days: 14
+
+      - name: Build Summary
+        run: |
+          echo "## Windows Build Summary" >> $env:GITHUB_STEP_SUMMARY
+          echo "✅ Windows build completed successfully!" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $env:GITHUB_STEP_SUMMARY
+          echo "- **vyana-windows-release**: Windows executable (zip)" >> $env:GITHUB_STEP_SUMMARY
