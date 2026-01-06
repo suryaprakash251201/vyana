@@ -1,9 +1,13 @@
 import sqlite3
+import os
 from typing import List, Optional, Dict
 import datetime
 from pydantic import BaseModel
 
-DB_PATH = "vyana.db"
+# Use /app/data for Docker, or current dir for local dev
+DATA_DIR = os.environ.get("DATA_DIR", ".")
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "vyana.db")
 
 class TaskItem(BaseModel):
     id: int
