@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vyana_flutter/core/theme.dart';
+import 'package:vyana_flutter/features/settings/settings_provider.dart';
+import 'package:vyana_flutter/features/home/home_screen.dart';
+import 'package:vyana_flutter/features/chat/chat_screen.dart';
+import 'package:vyana_flutter/features/tasks/tasks_screen.dart';
+import 'package:vyana_flutter/features/settings/settings_screen.dart';
+import 'package:vyana_flutter/features/calendar/calendar_screen.dart';
+import 'package:vyana_flutter/features/mail/mail_screen.dart';
+import 'package:vyana_flutter/features/home/dashboard_screen.dart';
+import 'package:vyana_flutter/features/auth/login_screen.dart';
+import 'package:vyana_flutter/features/tools/tools_screen.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://bqqdjkfgkwugqssvowxi.supabase.co',
+    anonKey: 'sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO',
+  );
+
+  runApp(const ProviderScope(child: VyanaApp()));
+}
+
+final _router = GoRouter(
+  initialLocation: '/login',
+  routes: [
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    ShellRoute(
+      builder: (context, state, child) => HomeScreen(child: child),
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/chat',
+          builder: (context, state) => const ChatScreen(),
+        ),
+        GoRoute(
+          path: '/tools',
+          builder: (context, state) => const ToolsScreen(),
+        ),
+        GoRoute(
+          path: '/tasks',
+          builder: (context, state) => const TasksScreen(),
+        ),
+        GoRoute(
+          path: '/calendar',
+          builder: (context, state) => const CalendarScreen(),
+        ),
+        GoRoute(
+          path: '/mail',
+          builder: (context, state) => const MailScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+      ],
+    ),
+  ],
+);
+
+class VyanaApp extends ConsumerWidget {
+  const VyanaApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.watch(settingsProvider);
+
+    return settingsAsync.when(
+      data: (settings) => MaterialApp.router(
+        title: 'Vyana',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: settings.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
+        routerConfig: _router,
+        debugShowCheckedModeBanner: false,
+      ),
+      loading: () => const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator()))),
+      error: (err, stack) => MaterialApp(home: Scaffold(body: Center(child: Text('Error: $err')))),
+    );
+  }
+}

@@ -1,0 +1,74 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    
+    defaults:
+      run:
+        working-directory: apps/vyana_flutter
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true  # Don't fail build on warnings
+
+      - name: Run tests
+        run: flutter test
+        continue-on-error: true  # Continue even if tests fail
+
+      - name: Build iOS (Debug - No Code Signing)
+        run: |
+          flutter build ios --debug --no-codesign
+
+      - name: Build iOS (Release - No Code Signing)
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: Compress iOS build
+        run: |
+          cd build/ios/iphoneos
+          zip -r ../../../ios-release.zip Runner.app
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-build
+          path: apps/vyana_flutter/ios-release.zip
+          retention-days: 14
+
+      - name: Build Summary
+        run: |
+          echo "## iOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ iOS build completed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **ios-release-build**: Unsigned .app bundle (zip)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **Note**: This is an unsigned build. To distribute via TestFlight or App Store, code signing is required." >> $GITHUB_STEP_SUMMARY

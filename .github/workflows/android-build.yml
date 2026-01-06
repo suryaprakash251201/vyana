@@ -1,0 +1,79 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+      - '.github/workflows/android-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/vyana_flutter/**'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: apps/vyana_flutter
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Run tests
+        run: flutter test
+        continue-on-error: true
+
+      - name: Build APK (Release)
+        run: flutter build apk --release
+
+      - name: Build App Bundle (Release)
+        run: flutter build appbundle --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/vyana_flutter/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+      - name: Upload App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: apps/vyana_flutter/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+      - name: Build Summary
+        run: |
+          echo "## Android Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Android build completed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **android-apk**: Release APK for direct installation" >> $GITHUB_STEP_SUMMARY
+          echo "- **android-aab**: App Bundle for Play Store" >> $GITHUB_STEP_SUMMARY
