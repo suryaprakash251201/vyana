@@ -152,9 +152,7 @@ class CalendarScreen extends ConsumerWidget {
                 ),
               ),
 
-                  ],
-                ),
-              ),
+
 
               // View Toggle
               Container(
