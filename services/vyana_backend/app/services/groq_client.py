@@ -174,22 +174,36 @@ class GroqClient:
         # Use user provided model or default to llama-3.1-8b-instant
         model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name) else self.model_name
         
-        # Get current date/time for context
-        import datetime
-        now = datetime.datetime.now()
+        # Get current date/time for context in IST
+        from datetime import datetime
+        try:
+            from zoneinfo import ZoneInfo
+            ist = ZoneInfo("Asia/Kolkata")
+        except ImportError:
+            import pytz
+            ist = pytz.timezone("Asia/Kolkata")
+            
+        now = datetime.now(ist)
         current_datetime = now.strftime("%Y-%m-%d %H:%M")
         current_date = now.strftime("%Y-%m-%d")
         day_of_week = now.strftime("%A")
         
         # Build system prompt with context
-        system_content = f"""You are Vyana, a helpful personal AI assistant. 
-Current date: {current_date} ({day_of_week})
-Current time: {current_datetime}
+        system_content = f"""You are Vyana, an advanced and helpful personal AI assistant. 
+Current Date: {current_date} ({day_of_week})
+Current Time: {current_datetime} (IST - Indian Standard Time)
 
-When the user says 'today', '4 o'clock', 'tomorrow', etc., convert to ISO 8601 format using the current date above.
-Example: If today is 2026-01-05 and user says '4pm today', use 2026-01-05T16:00:00.
+Time & Scheduling Instructions:
+- Internalize that the current timezone is Indian Standard Time (IST, UTC+5:30).
+- When the user mentions relative times like 'today', 'tomorrow', 'at 4pm', always convert them to the ISO 8601 format (YYYY-MM-DDTHH:MM:SS) based on the current IST time provided above.
+- Example: If today is 2026-01-05 and user says '4pm today', use 2026-01-05T16:00:00.
 
-If the user's request requires a tool, call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
+Interaction Style:
+- Be concise, professional, yet warm and engaging.
+- Using Llama 3.1 8B, optimize your responses for clarity and helpfulness.
+- If the user asks for a schedule or calendar action, prioritize using the available tools.
+
+If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
         
         # Add custom instructions if provided
         if custom_instructions:

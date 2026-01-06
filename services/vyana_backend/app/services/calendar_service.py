@@ -17,29 +17,37 @@ class CalendarService:
             "Prefer": "return=representation"
         }
 
-    def get_events(self, date_str: str = None):
+    def get_events(self, start_date_str: str = None, end_date_str: str = None):
         """
-        Get events for a specific date (YYYY-MM-DD). 
-        Defaults to today if None.
+        Get events for a specific date or range.
+        If only start_date_str is provided, fetches for that single day.
+        If end_date_str is provided, fetches from start_date (00:00) to end_date (23:59).
         """
         try:
-            if date_str:
-                target_date = date_parser.parse(date_str)
+            if start_date_str:
+                start_dt = date_parser.parse(start_date_str)
             else:
-                # Use local time for "today" to match user's expectation
-                target_date = datetime.datetime.now()
+                # Use local time for "today"
+                start_dt = datetime.datetime.now()
             
-            # Strip time component for date-only filtering
-            target_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Start at beginning of the start day
+            start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
             
-            # Filter for the specific day
-            start_of_day = target_date.isoformat()
-            end_of_day = (target_date + datetime.timedelta(days=1)).isoformat()
+            if end_date_str:
+                end_dt = date_parser.parse(end_date_str)
+                # Set to end of next day? Or just use < (end_dt + 1 day)?
+                # Let's assume end_date_str is inclusive for the day.
+                end_dt = end_dt.replace(hour=0, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)
+            else:
+                end_dt = start_dt + datetime.timedelta(days=1)
             
-            logger.info(f"Fetching events from {start_of_day} to {end_of_day}")
+            start_iso = start_dt.isoformat()
+            end_iso = end_dt.isoformat()
+            
+            logger.info(f"Fetching events from {start_iso} to {end_iso}")
             
             # Supabase PostgREST filtering
-            query = f"?select=*&start_time=gte.{start_of_day}&start_time=lt.{end_of_day}&order=start_time.asc"
+            query = f"?select=*&start_time=gte.{start_iso}&start_time=lt.{end_iso}&order=start_time.asc"
             
             response = requests.get(f"{self.base_url}{query}", headers=self.headers)
             logger.info(f"Supabase response status: {response.status_code}")

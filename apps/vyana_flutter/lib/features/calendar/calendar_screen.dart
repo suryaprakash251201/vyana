@@ -52,6 +52,27 @@ final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((r
   }
 });
 
+final calendarViewModeProvider = StateProvider<int>((ref) => 0); // 0: Month, 1: Schedule
+
+final scheduleEventsProvider = FutureProvider<List<dynamic>>((ref) async {
+  final apiClient = ref.watch(apiClientProvider);
+  final now = DateTime.now();
+  final startStr = "${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}";
+  // Fetch next 7 days
+  final end = now.add(const Duration(days: 7));
+  final endStr = "${end.year}-${end.month.toString().padLeft(2,'0')}-${end.day.toString().padLeft(2,'0')}";
+  
+  try {
+    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr');
+    if (res['events'] is List) {
+      return res['events'] as List<dynamic>;
+    }
+  } catch (e) {
+    debugPrint("Error fetching schedule: $e");
+  }
+  return [];
+});
+
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
 
@@ -70,7 +91,11 @@ class CalendarScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final selectedDate = ref.watch(selectedDateProvider);
-    final eventsAsync = ref.watch(calendarEventsProvider(selectedDate));
+    final viewMode = ref.watch(calendarViewModeProvider);
+    
+    final eventsAsync = viewMode == 0 
+        ? ref.watch(calendarEventsProvider(selectedDate))
+        : ref.watch(scheduleEventsProvider);
 
     return Scaffold(
       body: Container(
@@ -127,20 +152,80 @@ class CalendarScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Date Navigation
+                  ],
+                ),
+              ),
+
+              // View Toggle
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                     BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 8, offset: const Offset(0,2)
-                     )
-                  ]
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
                 ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => ref.read(calendarViewModeProvider.notifier).state = 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: viewMode == 0 ? AppColors.primaryPurple : Colors.transparent,
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "Month View",
+                            style: TextStyle(
+                              color: viewMode == 0 ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => ref.read(calendarViewModeProvider.notifier).state = 1,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: viewMode == 1 ? AppColors.primaryPurple : Colors.transparent,
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "Schedule",
+                            style: TextStyle(
+                              color: viewMode == 1 ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (viewMode == 0) ...[
+                // Date Navigation (Only for Month View)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                       BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 8, offset: const Offset(0,2)
+                       )
+                    ]
+                  ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -174,8 +259,11 @@ class CalendarScreen extends ConsumerWidget {
                       },
                     ),
                   ],
+                  ],
                 ),
               ),
+              ], // End Date Navigation
+              
               const Gap(16),
               const Gap(8),
 
@@ -189,7 +277,12 @@ class CalendarScreen extends ConsumerWidget {
                     if (events.length == 1 && events[0] is Map && events[0]['error'] != null) {
                        return Center(child: Text("Error: ${events[0]['error']}", style: const TextStyle(color: Colors.red)));
                     }
-                    return _buildEventsView(events, theme, ref);
+                    if (events.length == 1 && events[0] is Map && events[0]['error'] != null) {
+                       return Center(child: Text("Error: ${events[0]['error']}", style: const TextStyle(color: Colors.red)));
+                    }
+                    return viewMode == 0
+                      ? _buildEventsView(events, theme, ref)
+                      : _buildScheduleView(events, theme, ref);
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('Error: $e', textAlign: TextAlign.center)),
@@ -200,7 +293,7 @@ class CalendarScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEventDialog(context, selectedDate),
+        onPressed: () => _showAddEventDialog(context, viewMode==0 ? selectedDate : DateTime.now()),
         backgroundColor: AppColors.accentPink,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -300,6 +393,114 @@ class CalendarScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Widget _buildScheduleView(List<dynamic> events, ThemeData theme, WidgetRef ref) {
+    // Group events by Date
+    final Map<String, List<dynamic>> grouped = {};
+    for (var e in events) {
+      final start = e['start'];
+      if (start != null) {
+        try {
+          final dt = DateTime.parse(start).toLocal();
+          final dateKey = "${dt.year}-${dt.month}-${dt.day}";
+          if (!grouped.containsKey(dateKey)) grouped[dateKey] = [];
+          grouped[dateKey]!.add(e);
+        } catch (_) {}
+      }
+    }
+    
+    if (grouped.isEmpty) {
+       return Center(child: Text('No upcoming schedule for next 7 days', style: TextStyle(color: Colors.grey.shade600)));
+    }
+    
+    final sortedKeys = grouped.keys.toList()..sort();
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final key = sortedKeys[index];
+        final dayEvents = grouped[key]!;
+        final dateParts = key.split('-');
+        final dt = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
+        
+        // Header
+        bool isToday = DateUtils.isSameDay(dt, DateTime.now());
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             Padding(
+               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+               child: Text(
+                 isToday ? "Today" : "${dt.day}/${dt.month} - ${_getWeekday(dt.weekday)}",
+                 style: theme.textTheme.titleMedium?.copyWith(
+                   fontWeight: FontWeight.bold,
+                   color: isToday ? AppColors.accentPink : theme.colorScheme.onSurface
+                 ),
+               ),
+             ),
+             ...dayEvents.map((e) => _buildEventItem(context, e, theme, ref)).toList(),
+          ],
+        );
+      },
+    );
+  }
+  
+  String _getWeekday(int d) {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return days[d-1];
+  }
+
+  Widget _buildEventItem(BuildContext context, dynamic event, ThemeData theme, WidgetRef ref) {
+      final summary = event['summary'] ?? 'No Title';
+      final start = event['start'] ?? '';
+      
+      String timeStr = "";
+      DateTime? eventDate;
+      try {
+        eventDate = DateTime.parse(start).toLocal();
+        timeStr = "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
+      } catch (_) {}
+
+      return GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => _AddEventSheet(
+                initialDate: eventDate ?? DateTime.now(),
+                existingEvent: event,
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.withOpacity(0.05)),
+               boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.01),
+                    blurRadius: 2, offset:const Offset(0,1)
+                  )
+               ]
+            ),
+            child: Row(
+              children: [
+                Text(timeStr, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPurple)),
+                const Gap(12),
+                Container(width: 2, height: 24, color: Colors.grey.withOpacity(0.2)),
+                const Gap(12),
+                Expanded(child: Text(summary, style: const TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
+          )
+      );
   }
 }
 

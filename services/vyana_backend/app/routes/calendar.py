@@ -6,9 +6,10 @@ from app.services.calendar_service import calendar_service
 router = APIRouter()
 
 @router.get("/events")
-def get_events(date: str = None):
-    # date format expected: YYYY-MM-DD
-    return {"events": calendar_service.get_events(date)}
+def get_events(date: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None):
+    # date/start/end format expected: YYYY-MM-DD
+    # 'date' is kept for backward compatibility
+    return {"events": calendar_service.get_events(start_date_str=start or date, end_date_str=end)}
 
 @router.get("/today")
 def get_events_today():
