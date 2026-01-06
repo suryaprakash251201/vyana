@@ -47,9 +47,32 @@ class MailScreen extends ConsumerWidget {
   const MailScreen({super.key});
 
   Future<void> _connectGoogle(BuildContext context, WidgetRef ref) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Google connection is currently disabled.")),
-    );
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.get('/google/start');
+      final authUrl = response['auth_url'];
+      if (authUrl != null && await canLaunchUrl(Uri.parse(authUrl))) {
+        await launchUrl(Uri.parse(authUrl), mode: LaunchMode.externalApplication);
+        // Show instruction to user
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Complete login in browser, then refresh this page.")),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Could not open auth URL: $authUrl")),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error connecting: $e")),
+        );
+      }
+    }
   }
 
   void _showEmailDetails(BuildContext context, WidgetRef ref, String id, String subject) {
