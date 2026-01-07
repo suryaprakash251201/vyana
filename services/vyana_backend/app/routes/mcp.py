@@ -115,6 +115,11 @@ async def zerodha_callback(
     After the user authenticates on Zerodha, they are redirected here
     with a request_token. We exchange it for an access_token and connect.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Zerodha callback received: action={action}, status={status}, token={request_token[:10] if request_token else 'None'}...")
+    
     if action == "login" and status == "cancelled":
         return HTMLResponse("""
         <html>
@@ -127,33 +132,46 @@ async def zerodha_callback(
         """)
     
     if not request_token:
-        raise HTTPException(status_code=400, detail="Missing request_token")
+        raise HTTPException(status_code=400, detail="Missing request_token. Please initiate login from the app.")
     
     # If using Kite Connect API, exchange request_token for access_token
     if settings.ZERODHA_API_KEY and settings.ZERODHA_API_SECRET:
         try:
             import hashlib
+            
+            logger.info(f"Using Kite Connect API with key: {settings.ZERODHA_API_KEY[:8]}...")
+            
             # Generate checksum: SHA256(api_key + request_token + api_secret)
             checksum = hashlib.sha256(
                 (settings.ZERODHA_API_KEY + request_token + settings.ZERODHA_API_SECRET).encode()
             ).hexdigest()
             
+            logger.info(f"Generated checksum for token exchange")
+            
             # Exchange for access token
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     "https://api.kite.trade/session/token",
                     data={
                         "api_key": settings.ZERODHA_API_KEY,
                         "request_token": request_token,
                         "checksum": checksum
+                    },
+                    headers={
+                        "X-Kite-Version": "3"
                     }
                 )
+                
+                logger.info(f"Zerodha API response: {response.status_code}")
                 
                 if response.status_code == 200:
                     data = response.json()
                     access_token = data.get("data", {}).get("access_token")
+                    user_id = data.get("data", {}).get("user_id", "Unknown")
                     
                     if access_token:
+                        logger.info(f"Got access token for user: {user_id}")
+                        
                         # Connect to Zerodha MCP with access token
                         result = await mcp_service.connect("zerodha", access_token)
                         
@@ -162,6 +180,7 @@ async def zerodha_callback(
                             <html>
                             <body style="font-family: sans-serif; text-align: center; padding: 50px;">
                                 <h2>✅ Connected to Zerodha!</h2>
+                                <p>Welcome, {user_id}!</p>
                                 <p>Discovered {result.get('tools_count', 0)} tools.</p>
                                 <p>You can close this window and return to the app.</p>
                                 <script>setTimeout(() => window.close(), 3000);</script>
@@ -169,14 +188,61 @@ async def zerodha_callback(
                             </html>
                             """)
                         else:
-                            raise HTTPException(status_code=400, detail=result.get("error"))
+                            return HTMLResponse(f"""
+                            <html>
+                            <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                                <h2>⚠️ Authentication succeeded but MCP connection failed</h2>
+                                <p>Error: {result.get('error', 'Unknown')}</p>
+                                <p>Please try again.</p>
+                            </body>
+                            </html>
+                            """, status_code=400)
                     else:
                         raise HTTPException(status_code=400, detail="No access token in response")
                 else:
-                    raise HTTPException(status_code=400, detail=f"Token exchange failed: {response.text}")
+                    # Parse error from Zerodha
+                    error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                    error_msg = error_data.get("message", response.text)
+                    error_type = error_data.get("error_type", "Unknown")
                     
+                    logger.error(f"Zerodha token exchange failed: {error_type} - {error_msg}")
+                    
+                    # Common errors with helpful messages
+                    if "Invalid" in error_msg and "session" in error_msg.lower():
+                        return HTMLResponse(f"""
+                        <html>
+                        <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a1a; color: white;">
+                            <h2>❌ Token Expired or Already Used</h2>
+                            <p>Zerodha request tokens can only be used once and expire quickly.</p>
+                            <p><strong>Please try logging in again from the app.</strong></p>
+                            <p style="color: #888; font-size: 12px;">Error: {error_msg}</p>
+                        </body>
+                        </html>
+                        """, status_code=400)
+                    else:
+                        return HTMLResponse(f"""
+                        <html>
+                        <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a1a; color: white;">
+                            <h2>❌ Zerodha Authentication Failed</h2>
+                            <p>{error_msg}</p>
+                            <p>Please check your API credentials in .env file.</p>
+                        </body>
+                        </html>
+                        """, status_code=400)
+                    
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"OAuth error: {str(e)}")
+            logger.exception(f"OAuth error: {e}")
+            return HTMLResponse(f"""
+            <html>
+            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a1a; color: white;">
+                <h2>❌ OAuth Error</h2>
+                <p>{str(e)}</p>
+                <p>Please try again or check server logs.</p>
+            </body>
+            </html>
+            """, status_code=500)
     else:
         # Hosted MCP mode - just use request_token directly
         result = await mcp_service.connect("zerodha", request_token)
