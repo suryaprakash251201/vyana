@@ -318,6 +318,14 @@ class MCPService:
     
     async def _execute_kite_api(self, connection: MCPConnection, tool_name: str, arguments: dict) -> str:
         """Execute a Kite Connect API call directly"""
+        logger.info(f"Executing Kite API: {tool_name}")
+        
+        if not connection.auth_token:
+            return json.dumps({"error": "No access token. Please reconnect to Zerodha."})
+        
+        if not settings.ZERODHA_API_KEY:
+            return json.dumps({"error": "ZERODHA_API_KEY not configured in server .env file"})
+            
         try:
             headers = {
                 "X-Kite-Version": "3",
@@ -325,6 +333,8 @@ class MCPService:
             }
             
             base_url = "https://api.kite.trade"
+            
+            logger.info(f"Kite API request: {tool_name} with API key {settings.ZERODHA_API_KEY[:8]}...")
             
             if tool_name == "get_holdings":
                 response = await self.http_client.get(f"{base_url}/portfolio/holdings", headers=headers)
@@ -343,15 +353,27 @@ class MCPService:
             else:
                 return json.dumps({"error": f"Unknown Kite tool: {tool_name}"})
             
+            logger.info(f"Kite API response status: {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
-                return json.dumps(data.get("data", data))
+                result = data.get("data", data)
+                logger.info(f"Kite API success, data keys: {list(result.keys()) if isinstance(result, dict) else 'array'}")
+                return json.dumps(result)
+            elif response.status_code == 403:
+                return json.dumps({
+                    "error": "Access token expired or invalid. Zerodha tokens expire daily at 8am.",
+                    "hint": "Please reconnect to Zerodha via Settings → MCP Connections"
+                })
             else:
-                return json.dumps({"error": f"Kite API error: {response.status_code} - {response.text}"})
+                error_data = response.json() if "application/json" in response.headers.get("content-type", "") else {}
+                error_msg = error_data.get("message", response.text[:200])
+                logger.error(f"Kite API error: {response.status_code} - {error_msg}")
+                return json.dumps({"error": f"Kite API error ({response.status_code}): {error_msg}"})
                 
         except Exception as e:
-            logger.error(f"Kite API error: {e}")
-            return json.dumps({"error": str(e)})
+            logger.exception(f"Kite API exception: {e}")
+            return json.dumps({"error": f"Kite API error: {str(e)}"})
 
     
     def execute_tool_sync(self, full_tool_name: str, arguments: dict) -> str:
@@ -359,6 +381,8 @@ class MCPService:
         Synchronous wrapper for execute_tool.
         Tool name format: mcp_{mcp_name}_{tool_name}
         """
+        logger.info(f"execute_tool_sync called: {full_tool_name}")
+        
         # Parse tool name: mcp_zerodha_get_holdings -> zerodha, get_holdings
         parts = full_tool_name.split("_", 2)
         if len(parts) < 3 or parts[0] != "mcp":
@@ -367,6 +391,23 @@ class MCPService:
         mcp_name = parts[1]
         tool_name = parts[2]
         
+        # Check if connected
+        if mcp_name not in self.connections:
+            logger.warning(f"MCP {mcp_name} not connected. Available connections: {list(self.connections.keys())}")
+            return json.dumps({
+                "error": f"Not connected to {mcp_name}. Please connect via Settings → MCP Connections first.",
+                "hint": "Go to Settings → MCP Connections and connect to Zerodha"
+            })
+        
+        connection = self.connections[mcp_name]
+        logger.info(f"Found connection: {mcp_name}, status={connection.status.value}, mode={connection.mode}")
+        
+        if connection.status != MCPConnectionStatus.CONNECTED:
+            return json.dumps({
+                "error": f"{mcp_name} connection status is {connection.status.value}. Please reconnect.",
+                "hint": "Go to Settings → MCP Connections and reconnect to Zerodha"
+            })
+        
         # Run async in event loop
         try:
             loop = asyncio.get_event_loop()
@@ -374,7 +415,9 @@ class MCPService:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
         
-        return loop.run_until_complete(self.execute_tool(mcp_name, tool_name, arguments))
+        result = loop.run_until_complete(self.execute_tool(mcp_name, tool_name, arguments))
+        logger.info(f"Tool {full_tool_name} result: {result[:200]}..." if len(result) > 200 else f"Tool {full_tool_name} result: {result}")
+        return result
     
     def get_all_tools_for_llm(self) -> List[dict]:
         """
