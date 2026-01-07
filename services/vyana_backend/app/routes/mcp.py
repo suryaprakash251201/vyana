@@ -172,8 +172,8 @@ async def zerodha_callback(
                     if access_token:
                         logger.info(f"Got access token for user: {user_id}")
                         
-                        # Connect to Zerodha MCP with access token
-                        result = await mcp_service.connect("zerodha", access_token)
+                        # Connect to Zerodha using Kite Connect API mode (not MCP)
+                        result = await mcp_service.connect("zerodha", access_token, mode="api")
                         
                         if result.get("success"):
                             return HTMLResponse(f"""

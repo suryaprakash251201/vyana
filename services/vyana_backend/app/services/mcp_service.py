@@ -37,6 +37,7 @@ class MCPConnection:
     tools: List[dict] = field(default_factory=list)  # Discovered tools from this MCP
     error_message: Optional[str] = None
     icon: str = "🔌"  # Emoji icon for UI
+    mode: str = "mcp"  # "mcp" for MCP protocol, "api" for direct API
 
 
 @dataclass
@@ -66,6 +67,46 @@ KNOWN_MCP_SERVERS: Dict[str, MCPServerConfig] = {
     # "notion": MCPServerConfig(...),
     # "github": MCPServerConfig(...),
 }
+
+
+# Built-in Zerodha tools when using Kite Connect API directly
+ZERODHA_KITE_TOOLS = [
+    {
+        "name": "get_holdings",
+        "description": "Get your stock holdings (long-term investments)",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_positions", 
+        "description": "Get your current trading positions (intraday and overnight)",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_margins",
+        "description": "Get your account margins and available funds",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_orders",
+        "description": "Get list of orders placed today",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "get_quote",
+        "description": "Get real-time quote for instruments",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "instruments": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of instruments in format EXCHANGE:SYMBOL, e.g., ['NSE:RELIANCE', 'NSE:INFY']"
+                }
+            },
+            "required": ["instruments"]
+        }
+    }
+]
 
 
 class MCPService:
@@ -100,13 +141,14 @@ class MCPService:
             })
         return servers
     
-    async def connect(self, name: str, auth_token: Optional[str] = None) -> dict:
+    async def connect(self, name: str, auth_token: Optional[str] = None, mode: str = "mcp") -> dict:
         """
-        Connect to an MCP server.
+        Connect to an MCP server or direct API.
         
         Args:
             name: Name of the MCP server (e.g., "zerodha")
             auth_token: OAuth token if required
+            mode: "mcp" for MCP protocol, "api" for direct API (e.g., Kite Connect)
             
         Returns:
             Connection status and discovered tools
@@ -123,23 +165,42 @@ class MCPService:
             url=config.url,
             status=MCPConnectionStatus.CONNECTING,
             auth_token=auth_token,
-            icon=config.icon
+            icon=config.icon,
+            mode=mode
         )
         self.connections[name] = connection
         
         try:
-            # Discover tools from the MCP server
-            tools = await self._discover_tools(connection)
-            connection.tools = tools
-            connection.status = MCPConnectionStatus.CONNECTED
-            
-            logger.info(f"Connected to {name} MCP, discovered {len(tools)} tools")
-            return {
-                "success": True,
-                "name": name,
-                "tools_count": len(tools),
-                "tools": [t.get("name", "unknown") for t in tools]
-            }
+            # For Zerodha with Kite Connect API mode, use built-in tools
+            if name == "zerodha" and mode == "api":
+                # Kite Connect API mode - use predefined tools
+                connection.tools = ZERODHA_KITE_TOOLS
+                connection.status = MCPConnectionStatus.CONNECTED
+                connection.mode = "api"
+                
+                logger.info(f"Connected to {name} via Kite Connect API, using {len(connection.tools)} built-in tools")
+                return {
+                    "success": True,
+                    "name": name,
+                    "mode": "api",
+                    "tools_count": len(connection.tools),
+                    "tools": [t.get("name", "unknown") for t in connection.tools]
+                }
+            else:
+                # Standard MCP mode - discover tools from server
+                tools = await self._discover_tools(connection)
+                connection.tools = tools
+                connection.status = MCPConnectionStatus.CONNECTED
+                connection.mode = "mcp"
+                
+                logger.info(f"Connected to {name} MCP, discovered {len(tools)} tools")
+                return {
+                    "success": True,
+                    "name": name,
+                    "mode": "mcp",
+                    "tools_count": len(tools),
+                    "tools": [t.get("name", "unknown") for t in tools]
+                }
             
         except Exception as e:
             connection.status = MCPConnectionStatus.ERROR
@@ -195,7 +256,7 @@ class MCPService:
     
     async def execute_tool(self, mcp_name: str, tool_name: str, arguments: dict) -> str:
         """
-        Execute a tool on an MCP server.
+        Execute a tool on an MCP server or direct API.
         
         Args:
             mcp_name: Name of the MCP server
@@ -210,6 +271,11 @@ class MCPService:
         
         connection = self.connections[mcp_name]
         
+        # Kite Connect API mode - execute directly
+        if connection.mode == "api" and mcp_name == "zerodha":
+            return await self._execute_kite_api(connection, tool_name, arguments)
+        
+        # Standard MCP mode
         try:
             request_body = {
                 "jsonrpc": "2.0",
@@ -249,6 +315,44 @@ class MCPService:
         except Exception as e:
             logger.error(f"Error executing MCP tool {tool_name}: {e}")
             return json.dumps({"error": str(e)})
+    
+    async def _execute_kite_api(self, connection: MCPConnection, tool_name: str, arguments: dict) -> str:
+        """Execute a Kite Connect API call directly"""
+        try:
+            headers = {
+                "X-Kite-Version": "3",
+                "Authorization": f"token {settings.ZERODHA_API_KEY}:{connection.auth_token}"
+            }
+            
+            base_url = "https://api.kite.trade"
+            
+            if tool_name == "get_holdings":
+                response = await self.http_client.get(f"{base_url}/portfolio/holdings", headers=headers)
+            elif tool_name == "get_positions":
+                response = await self.http_client.get(f"{base_url}/portfolio/positions", headers=headers)
+            elif tool_name == "get_margins":
+                response = await self.http_client.get(f"{base_url}/user/margins", headers=headers)
+            elif tool_name == "get_orders":
+                response = await self.http_client.get(f"{base_url}/orders", headers=headers)
+            elif tool_name == "get_quote":
+                instruments = arguments.get("instruments", [])
+                if not instruments:
+                    return json.dumps({"error": "No instruments provided"})
+                params = "&".join([f"i={i}" for i in instruments])
+                response = await self.http_client.get(f"{base_url}/quote?{params}", headers=headers)
+            else:
+                return json.dumps({"error": f"Unknown Kite tool: {tool_name}"})
+            
+            if response.status_code == 200:
+                data = response.json()
+                return json.dumps(data.get("data", data))
+            else:
+                return json.dumps({"error": f"Kite API error: {response.status_code} - {response.text}"})
+                
+        except Exception as e:
+            logger.error(f"Kite API error: {e}")
+            return json.dumps({"error": str(e)})
+
     
     def execute_tool_sync(self, full_tool_name: str, arguments: dict) -> str:
         """
