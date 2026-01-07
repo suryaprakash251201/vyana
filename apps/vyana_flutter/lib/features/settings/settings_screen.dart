@@ -7,6 +7,7 @@ import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/settings/settings_provider.dart';
 import 'package:vyana_flutter/features/auth/supabase_auth_service.dart';
 import 'package:vyana_flutter/core/api_client.dart';
+import 'package:vyana_flutter/features/mcp/mcp_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -313,6 +314,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   const Gap(24),
+
+                  // MCP Connections
+                  _buildSectionHeader('MCP Connections', Icons.extension),
+                  const Gap(12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryPurple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.link, color: AppColors.primaryPurple),
+                      ),
+                      title: const Text('Manage MCP Services'),
+                      subtitle: const Text('Connect Zerodha, and more'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const _MCPScreenWrapper(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const Gap(24),
                   
                   // Appearance
                   _buildSectionHeader('Appearance', Icons.palette),
@@ -429,5 +469,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+}
+
+/// Wrapper to provide ProviderScope for MCPScreen when navigating from settings
+class _MCPScreenWrapper extends StatelessWidget {
+  const _MCPScreenWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MCPScreen();
   }
 }

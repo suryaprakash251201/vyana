@@ -52,7 +52,15 @@ final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((r
   }
 });
 
-final calendarViewModeProvider = StateProvider<int>((ref) => 0); // 0: Month, 1: Schedule
+// 0: Month, 1: Schedule
+final calendarViewModeProvider = NotifierProvider<CalendarViewModeNotifier, int>(CalendarViewModeNotifier.new);
+
+class CalendarViewModeNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void set(int mode) => state = mode;
+}
 
 final scheduleEventsProvider = FutureProvider<List<dynamic>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
@@ -167,7 +175,7 @@ class CalendarScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => ref.read(calendarViewModeProvider.notifier).state = 0,
+                        onTap: () => ref.read(calendarViewModeProvider.notifier).set(0),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
@@ -187,7 +195,7 @@ class CalendarScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => ref.read(calendarViewModeProvider.notifier).state = 1,
+                        onTap: () => ref.read(calendarViewModeProvider.notifier).set(1),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
@@ -256,7 +264,6 @@ class CalendarScreen extends ConsumerWidget {
                             selectedDate.add(const Duration(days: 1)));
                       },
                     ),
-                  ],
                   ],
                 ),
               ),

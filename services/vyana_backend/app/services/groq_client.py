@@ -8,6 +8,7 @@ from app.services.tasks_repo import tasks_repo
 from app.services.calendar_service import calendar_service
 from app.services.gmail_service import gmail_service
 from app.services.notes_service import notes_service
+from app.services.mcp_service import mcp_service
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -37,8 +38,9 @@ class GroqClient:
             raise e
 
     def _get_tools(self):
-        """Returns list of tools in OpenAI/Groq format"""
-        return [
+        """Returns list of tools in OpenAI/Groq format, including MCP tools"""
+        # Base tools (built-in)
+        base_tools = [
             {
                 "type": "function",
                 "function": {
@@ -141,6 +143,12 @@ class GroqClient:
                 }
             }
         ]
+        
+        # Add MCP tools dynamically from connected MCP servers
+        mcp_tools = mcp_service.get_all_tools_for_llm()
+        logger.debug(f"Adding {len(mcp_tools)} MCP tools to AI")
+        
+        return base_tools + mcp_tools
 
     def _execute_function(self, function_name, function_args):
         """Execute a function call and return result as JSON string"""
@@ -148,6 +156,12 @@ class GroqClient:
         try:
             args = json.loads(function_args) if isinstance(function_args, str) else function_args
             
+            # Check if this is an MCP tool (prefixed with mcp_)
+            if mcp_service.is_mcp_tool(function_name):
+                logger.info(f"Routing to MCP service: {function_name}")
+                return mcp_service.execute_tool_sync(function_name, args)
+            
+            # Built-in tools
             if function_name == "create_task":
                 result = tasks_repo.add_task(args["title"], args.get("due_date"))
                 return json.dumps({"id": result.id, "status": "Task created"})
