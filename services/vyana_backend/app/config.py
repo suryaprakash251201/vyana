@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
 
+    # Zerodha MCP Configuration (Optional - for Kite Connect API)
+    ZERODHA_API_KEY: str = ""
+    ZERODHA_API_SECRET: str = ""
+    ZERODHA_REDIRECT_URI: str = ""  # e.g., http://localhost:8080/mcp/zerodha/callback
+
     # Feature Toggles (Can be overriden by env or at runtime via API if we adding mutable state)
     ENABLE_TOOLS: bool = True
     TAMIL_MODE: bool = False

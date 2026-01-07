@@ -9,8 +9,13 @@ services:
       - .env
     environment:
       - DATA_DIR=/app/data
+      # MCP Configuration (optional - can also be in .env)
+      # - ZERODHA_API_KEY=${ZERODHA_API_KEY}
+      # - ZERODHA_API_SECRET=${ZERODHA_API_SECRET}
+      # - ZERODHA_REDIRECT_URI=${ZERODHA_REDIRECT_URI}
     volumes:
       - ./data:/app/data
+      - ./vyana.db:/app/vyana.db # Persist SQLite database
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
       interval: 30s
