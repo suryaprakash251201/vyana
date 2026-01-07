@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import 'package:vyana_flutter/core/api_client.dart';
@@ -46,8 +47,14 @@ class ChatState {
 
 @Riverpod(keepAlive: true)
 class Chat extends _$Chat {
+  StreamSubscription? _currentStreamSubscription;
+  
   @override
   ChatState build() {
+    // Cancel any active stream when provider is disposed
+    ref.onDispose(() {
+      _currentStreamSubscription?.cancel();
+    });
     return ChatState();
   }
 
@@ -89,9 +96,12 @@ class Chat extends _$Chat {
         }
       });
 
-      final response = await http.Client().send(request);
+      final response = await http.Client().send(request).timeout(const Duration(seconds: 60));
+      
+      // Cancel any previous stream before starting new one
+      await _currentStreamSubscription?.cancel();
 
-      response.stream.transform(utf8.decoder).listen((value) {
+      _currentStreamSubscription = response.stream.transform(utf8.decoder).listen((value) {
         final lines = value.split('\n\n');
         for (final line in lines) {
           if (line.startsWith('data: ')) {
@@ -105,19 +115,21 @@ class Chat extends _$Chat {
                  _appendContent(assistantMsgId, "Error: ${data['content']}");
               }
             } catch (e) {
-              print('Error parsing SSE: $e');
+              debugPrint('Error parsing SSE: $e');
             }
           }
         }
       }, onDone: () {
         _finishStreaming(assistantMsgId);
       }, onError: (e) {
+        debugPrint('Stream error: $e');
+        _appendContent(assistantMsgId, "Connection error. Please try again.");
         _finishStreaming(assistantMsgId);
       });
 
     } catch (e) {
-      print("Chat Error: $e");
-      _appendContent(assistantMsgId, "Error: $e"); // Show error in UI
+      debugPrint("Chat Error: $e");
+      _appendContent(assistantMsgId, "Error: ${e.toString().split(':').last.trim()}");
       _finishStreaming(assistantMsgId);
       state = state.copyWith(isLoading: false);
     }

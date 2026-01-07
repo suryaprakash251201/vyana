@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
@@ -28,6 +27,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isListening = false;
   bool _isProcessingAudio = false;
+  String? _currentRecordingPath;
+  bool _isRecordingLocked = false; // Prevent race conditions
 
   @override
   void initState() {
@@ -36,37 +37,83 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
+    
+    // Check microphone permission on init
+    _checkMicPermission();
+  }
+  
+  Future<void> _checkMicPermission() async {
+    final hasPermission = await _audioRecorder.hasPermission();
+    if (!hasPermission && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Microphone permission is required for voice input')),
+      );
+    }
   }
 
   Future<void> _startRecording() async {
+    // Prevent race conditions from multiple triggers
+    if (_isRecordingLocked || _isListening || _isProcessingAudio) return;
+    _isRecordingLocked = true;
+    
     try {
       if (await _audioRecorder.hasPermission()) {
         final dir = await getTemporaryDirectory();
-        final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        _currentRecordingPath = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
         
-        await _audioRecorder.start(const RecordConfig(), path: path);
-        setState(() => _isListening = true);
+        await _audioRecorder.start(const RecordConfig(), path: _currentRecordingPath!);
+        if (mounted) setState(() => _isListening = true);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please grant microphone permission')),
+          );
+        }
       }
     } catch (e) {
-      print("Error starting record: $e");
+      debugPrint("Error starting record: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Recording error: $e')),
+        );
+      }
+    } finally {
+      _isRecordingLocked = false;
     }
   }
 
   Future<void> _stopRecording() async {
+    if (!_isListening) return; // Only stop if actually listening
+    
     try {
       final path = await _audioRecorder.stop();
-      setState(() {
-        _isListening = false;
-        _isProcessingAudio = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _isProcessingAudio = true;
+        });
+      }
 
-      if (path != null) {
+      if (path != null && path.isNotEmpty) {
         await _transcribeAudio(path);
+        // Clean up audio file after transcription
+        _cleanupAudioFile(path);
       }
     } catch (e) {
-      print("Error stopping record: $e");
+      debugPrint("Error stopping record: $e");
     } finally {
       if (mounted) setState(() => _isProcessingAudio = false);
+    }
+  }
+  
+  void _cleanupAudioFile(String path) {
+    try {
+      final file = File(path);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+    } catch (e) {
+      debugPrint("Error cleaning up audio file: $e");
     }
   }
 
@@ -84,25 +131,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
         contentType: MediaType('audio', 'm4a')
       ));
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['text'];
-        if (text != null && text.isNotEmpty) {
+        if (text != null && text.toString().isNotEmpty && mounted) {
           setState(() {
-             _controller.text = text;
+             _controller.text = text.toString().trim();
              _controller.selection = TextSelection.fromPosition(TextPosition(offset: _controller.text.length));
           });
         }
       } else {
-        print("Transcription failed: ${response.statusCode} ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Transcription failed: ${response.statusCode}")));
+        debugPrint("Transcription failed: ${response.statusCode} ${response.body}");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Transcription failed: ${response.statusCode}")),
+          );
+        }
       }
     } catch (e) {
-      print("Transcribe error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      debugPrint("Transcribe error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Voice error: ${e.toString().split(':').last.trim()}")),
+        );
+      }
     }
   }
 
@@ -217,23 +272,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
                     GestureDetector(
                       onLongPressStart: (_) => _startRecording(),
                       onLongPressEnd: (_) => _stopRecording(),
-                      // Also support Tap to toggle for non-touch?
-                      // Let's keep Hold for now or Tap-Tap. 
-                      // User asked for "voice function".
-                      onTapDown: (_) => _startRecording(),
-                      onTapUp: (_) => _stopRecording(),
-                      onTapCancel: _stopRecording,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: _isListening ? AppColors.errorRed : theme.colorScheme.surface,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _isListening ? Colors.transparent : Colors.grey.shade300),
-                          boxShadow: _isListening ? [BoxShadow(color: AppColors.errorRed.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)] : [],
+                      onLongPressCancel: _stopRecording,
+                      child: Tooltip(
+                        message: 'Hold to record voice',
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _isListening ? AppColors.errorRed : theme.colorScheme.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _isListening ? Colors.transparent : Colors.grey.shade300),
+                            boxShadow: _isListening ? [BoxShadow(color: AppColors.errorRed.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)] : [],
+                          ),
+                          child: _isProcessingAudio 
+                              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                              : Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.white : Colors.grey.shade600),
                         ),
-                        child: _isProcessingAudio 
-                            ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.white : Colors.grey.shade600),
                       ),
                     ),
                     const Gap(8),

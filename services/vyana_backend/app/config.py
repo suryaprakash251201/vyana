@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3-pro-preview"
     GROQ_API_KEY: str
 
-    SUPABASE_URL: str = "https://bqqdjkfgkwugqssvowxi.supabase.co"
-    SUPABASE_KEY: str = "sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO"
+    SUPABASE_URL: str = ""  # Required: set in .env
+    SUPABASE_KEY: str = ""  # Required: set in .env
 
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str

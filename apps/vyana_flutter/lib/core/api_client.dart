@@ -36,7 +36,7 @@ class ApiClient {
       _uri(path),
       headers: {'Content-Type': 'application/json'},
       body: body != null ? jsonEncode(body) : null,
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 60)); // Increased for AI responses
     return _handleResponse(response);
   }
   
