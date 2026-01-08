@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/features/settings/settings_provider.dart';
+import 'package:vyana_flutter/core/sound_service.dart';
 
 part 'chat_provider.g.dart';
 
@@ -81,8 +82,12 @@ class Chat extends _$Chat {
     }
 
     try {
+      // Play sent sound
+      await SoundService.playSent();
+
       final request = http.Request('POST', Uri.parse('${apiClient.baseUrl}/chat/stream'));
       request.headers['Content-Type'] = 'application/json';
+      // ... request body setup ...
       request.body = jsonEncode({
         'messages': state.messages
             .where((m) => !m.isStreaming && m.role != 'tool') 
@@ -100,6 +105,12 @@ class Chat extends _$Chat {
       
       // Cancel any previous stream before starting new one
       await _currentStreamSubscription?.cancel();
+
+      // Play received sound when stream starts (optional, or wait for first chunk?)
+      // Let's play it when connection is established
+      if (response.statusCode == 200) {
+        SoundService.playReceived();
+      }
 
       _currentStreamSubscription = response.stream.transform(utf8.decoder).listen((value) {
         final lines = value.split('\n\n');

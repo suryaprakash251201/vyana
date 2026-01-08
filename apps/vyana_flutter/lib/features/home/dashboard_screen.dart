@@ -6,6 +6,7 @@ import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/tasks/tasks_provider.dart';
 import 'package:vyana_flutter/features/calendar/calendar_screen.dart';
 import 'package:vyana_flutter/features/auth/supabase_auth_service.dart';
+import 'package:vyana_flutter/features/notifications/notifications_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -103,8 +104,9 @@ class DashboardScreen extends ConsumerWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(20),
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("No new notifications")),
+                            Navigator.push(
+                              context, 
+                              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
                             );
                           },
                           child: const Padding(

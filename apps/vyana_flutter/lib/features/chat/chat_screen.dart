@@ -268,13 +268,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
                 ),
                 child: Row(
                   children: [
-                    // Voice Button (Hold to record)
+                    // Voice Button (Hold OR Tap to record)
                     GestureDetector(
                       onLongPressStart: (_) => _startRecording(),
                       onLongPressEnd: (_) => _stopRecording(),
                       onLongPressCancel: _stopRecording,
+                      onTap: () {
+                        if (_isListening) {
+                          _stopRecording();
+                        } else {
+                          _startRecording();
+                        }
+                      },
                       child: Tooltip(
-                        message: 'Hold to record voice',
+                        message: 'Hold or Tap to record voice',
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(

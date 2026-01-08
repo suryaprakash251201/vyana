@@ -1,72 +1,53 @@
-import requests
 import datetime
-from dateutil import parser as date_parser
-import json
 import logging
-from app.config import settings
+from googleapiclient.discovery import build
+from app.services.google_oauth import oauth_service
 
 logger = logging.getLogger(__name__)
 
 class CalendarService:
-    def __init__(self):
-        self.base_url = f"{settings.SUPABASE_URL}/rest/v1/calendar_events"
-        self.headers = {
-            "apikey": settings.SUPABASE_KEY,
-            "Authorization": f"Bearer {settings.SUPABASE_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        }
+    def get_service(self):
+        creds = oauth_service.get_credentials()
+        if not creds:
+            logger.warning("No valid Google credentials found.")
+            return None
+        return build('calendar', 'v3', credentials=creds)
 
     def get_events(self, start_date_str: str = None, end_date_str: str = None):
-        """
-        Get events for a specific date or range.
-        If only start_date_str is provided, fetches for that single day.
-        If end_date_str is provided, fetches from start_date (00:00) to end_date (23:59).
-        """
         try:
+            service = self.get_service()
+            if not service:
+                return [{"error": "Not authenticated. Please connect Google Calendar in settings."}]
+
+            # Default to now if no start date
             if start_date_str:
-                start_dt = date_parser.parse(start_date_str)
+                start_dt = datetime.datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
             else:
-                # Use local time for "today"
-                start_dt = datetime.datetime.now()
+                start_dt = datetime.datetime.utcnow()
             
-            # Start at beginning of the start day
-            start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            time_min = start_dt.isoformat() + 'Z'
             
-            if end_date_str:
-                end_dt = date_parser.parse(end_date_str)
-                # Set to end of next day? Or just use < (end_dt + 1 day)?
-                # Let's assume end_date_str is inclusive for the day.
-                end_dt = end_dt.replace(hour=0, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)
-            else:
-                end_dt = start_dt + datetime.timedelta(days=1)
+            logger.info(f"Fetching Google Calendar events from {time_min}")
             
-            start_iso = start_dt.isoformat()
-            end_iso = end_dt.isoformat()
+            events_result = service.events().list(
+                calendarId='primary', 
+                timeMin=time_min,
+                maxResults=10, 
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
             
-            logger.info(f"Fetching events from {start_iso} to {end_iso}")
-            
-            # Supabase PostgREST filtering
-            query = f"?select=*&start_time=gte.{start_iso}&start_time=lt.{end_iso}&order=start_time.asc"
-            
-            response = requests.get(f"{self.base_url}{query}", headers=self.headers)
-            logger.info(f"Supabase response status: {response.status_code}")
-            
-            if response.status_code != 200:
-                logger.error(f"Supabase error: {response.text}")
-                return [{"error": f"Supabase error: {response.text}"}]
-            
-            events = response.json()
+            events = events_result.get('items', [])
             logger.info(f"Found {len(events)} events")
-            
-            # Map to expected structure
+
             structured = []
             for e in events:
+                start = e['start'].get('dateTime', e['start'].get('date'))
                 structured.append({
-                    "id": e.get('id'),
+                    "id": e['id'],
                     "summary": e.get('summary', 'No Title'),
-                    "start": e.get('start_time'),
-                    "link": "",
+                    "start": start,
+                    "link": e.get('htmlLink', ''),
                     "location": e.get('location', ''),
                     "description": e.get('description', '')
                 })
@@ -78,86 +59,48 @@ class CalendarService:
 
     def create_event(self, summary: str, start_time: str, duration_minutes: int = 60, description: str = None):
         try:
-            # Parse and normalize the start_time
-            parsed_time = date_parser.parse(start_time)
-            
-            data = {
-                "summary": summary,
-                "start_time": parsed_time.isoformat(),
-                "duration_minutes": duration_minutes,
-                "user_id": "app_user"
+            service = self.get_service()
+            if not service:
+                return "Not authenticated"
+
+            # Parse start time
+            try:
+                start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            except ValueError:
+                # Handle cases where ISO format might be slightly off
+                start_dt = datetime.datetime.now() # Fallback
+
+            end_dt = start_dt + datetime.timedelta(minutes=duration_minutes)
+
+            event = {
+                'summary': summary,
+                'description': description or '',
+                'start': {
+                    'dateTime': start_dt.isoformat(),
+                    'timeZone': 'Asia/Kolkata', # Defaulting to IST as per project context
+                },
+                'end': {
+                    'dateTime': end_dt.isoformat(),
+                    'timeZone': 'Asia/Kolkata',
+                },
             }
-            
-            if description:
-                data["description"] = description
-            
-            logger.info(f"Creating event: {data}")
-            
-            response = requests.post(self.base_url, headers=self.headers, json=data)
-            
-            if response.status_code not in [200, 201]:
-                logger.error(f"Supabase create error: {response.status_code} - {response.text}")
-                return f"Error creating event: {response.text}"
-            
-            created = response.json()
-            logger.info(f"Event created: {created}")
-            
-            if created:
-                return f"Event created: {summary} at {parsed_time.strftime('%Y-%m-%d %H:%M')}"
-            return "Event created"
-            
+
+            created_event = service.events().insert(calendarId='primary', body=event).execute()
+            logger.info(f"Event created: {created_event.get('htmlLink')}")
+            return f"Event created: {summary} at {start_dt.strftime('%H:%M')}"
+
         except Exception as e:
             logger.error(f"Error creating event: {e}")
             return f"Error creating event: {e}"
 
-    def update_event(self, event_id: str, summary: str = None, start_time: str = None, 
-                     duration_minutes: int = None, description: str = None):
-        try:
-            data = {}
-            if summary:
-                data["summary"] = summary
-            if start_time:
-                parsed_time = date_parser.parse(start_time)
-                data["start_time"] = parsed_time.isoformat()
-            if duration_minutes:
-                data["duration_minutes"] = duration_minutes
-            if description is not None:
-                data["description"] = description
-            
-            if not data:
-                return "No fields to update"
-            
-            logger.info(f"Updating event {event_id}: {data}")
-            
-            response = requests.patch(
-                f"{self.base_url}?id=eq.{event_id}",
-                headers=self.headers,
-                json=data
-            )
-            
-            if response.status_code not in [200, 204]:
-                logger.error(f"Supabase update error: {response.status_code} - {response.text}")
-                return f"Error updating event: {response.text}"
-            
-            return f"Event updated successfully"
-            
-        except Exception as e:
-            logger.error(f"Error updating event: {e}")
-            return f"Error updating event: {e}"
-
     def delete_event(self, event_id: str):
         try:
-            response = requests.delete(
-                f"{self.base_url}?id=eq.{event_id}",
-                headers=self.headers
-            )
+            service = self.get_service()
+            if not service:
+                return "Not authenticated"
             
-            if response.status_code not in [200, 204]:
-                logger.error(f"Supabase delete error: {response.status_code} - {response.text}")
-                return f"Error deleting event: {response.text}"
-            
-            return "Event deleted successfully"
-            
+            service.events().delete(calendarId='primary', eventId=event_id).execute()
+            return "Event deleted"
         except Exception as e:
             logger.error(f"Error deleting event: {e}")
             return f"Error deleting event: {e}"

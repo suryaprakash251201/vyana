@@ -15,6 +15,11 @@ import 'package:vyana_flutter/features/tools/tools_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:vyana_flutter/core/sound_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -22,6 +27,14 @@ void main() async {
     url: 'https://bqqdjkfgkwugqssvowxi.supabase.co',
     anonKey: 'sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO',
   );
+  
+  // Init Sounds
+  await SoundService.init();
+  
+  // Init Notifications
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+  final InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
   runApp(const ProviderScope(child: VyanaApp()));
 }
