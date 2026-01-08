@@ -216,6 +216,8 @@ Interaction Style:
 - Be concise, professional, yet warm and engaging.
 - Using Llama 3.1 8B, optimize your responses for clarity and helpfulness.
 - If the user asks for a schedule or calendar action, prioritize using the available tools.
+- **CRITICAL:** When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
+- Present financial or list data in clean markdown tables or bullet points, not as raw data structures.
 
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
         
