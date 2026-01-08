@@ -6,25 +6,26 @@ from app.services.calendar_service import calendar_service
 router = APIRouter()
 
 @router.get("/events")
-def get_events(date: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None):
+def get_events(date: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None, user_id: Optional[str] = None):
     # date/start/end format expected: YYYY-MM-DD
     # 'date' is kept for backward compatibility
-    return {"events": calendar_service.get_events(start_date_str=start or date, end_date_str=end)}
+    return {"events": calendar_service.get_events(start_date_str=start or date, end_date_str=end, user_id=user_id)}
 
 @router.get("/today")
-def get_events_today():
+def get_events_today(user_id: Optional[str] = None):
     # Deprecated fallback
-    return {"events": calendar_service.get_events(None)}
+    return {"events": calendar_service.get_events(None, user_id=user_id)}
 
 class CreateEventRequest(BaseModel):
     summary: str
     start_time: str
     duration_minutes: int = 60
     description: Optional[str] = None
+    user_id: Optional[str] = None
 
 @router.post("/create")
 def create_event(req: CreateEventRequest):
-    return {"result": calendar_service.create_event(req.summary, req.start_time, req.duration_minutes, req.description)}
+    return {"result": calendar_service.create_event(req.summary, req.start_time, req.duration_minutes, req.description, req.user_id)}
 
 class UpdateEventRequest(BaseModel):
     id: str

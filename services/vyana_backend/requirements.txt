@@ -14,3 +14,4 @@ pytest-asyncio
 python-dateutil
 groq
 python-multipart
+supabase>=2.0.0

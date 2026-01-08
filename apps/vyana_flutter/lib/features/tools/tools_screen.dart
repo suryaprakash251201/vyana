@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:gap/gap.dart';
+import 'package:vyana_flutter/core/sound_service.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({super.key});
@@ -69,12 +70,24 @@ class ToolsScreen extends StatelessWidget {
                       AppColors.accentPink,
                       () => context.go('/calendar'),
                     ),
+                      () => context.go('/mail'),
+                    ),
                     _buildToolCard(
                       context,
-                      "Mail",
-                      Icons.mail_outline,
-                      Colors.orange,
-                      () => context.go('/mail'),
+                      "Reminders",
+                      Icons.alarm,
+                      AppColors.primaryPurple,
+                      () => context.go('/reminders'),
+                    ),
+                    _buildToolCard(
+                      context,
+                      "Test Sound",
+                      Icons.volume_up,
+                      Colors.teal,
+                      () {
+                         SoundService.play('sent.mp3');
+                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Playing test sound...")));
+                      },
                     ),
                   ],
                 ),

@@ -12,6 +12,8 @@ import 'package:vyana_flutter/features/mail/mail_screen.dart';
 import 'package:vyana_flutter/features/home/dashboard_screen.dart';
 import 'package:vyana_flutter/features/auth/login_screen.dart';
 import 'package:vyana_flutter/features/tools/tools_screen.dart';
+import 'package:vyana_flutter/features/tools/reminders_screen.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -48,8 +50,14 @@ void main() async {
         iOS: initializationSettingsDarwin,
     );
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  } catch (e) {
     debugPrint("Notification init error: $e");
+  }
+  
+  // Init Timezones
+  try {
+    tz.initializeTimeZones();
+  } catch (e) {
+    debugPrint("Tz init error: $e");
   }
 
   runApp(const ProviderScope(child: VyanaApp()));
@@ -76,6 +84,10 @@ final _router = GoRouter(
         GoRoute(
           path: '/tools',
           builder: (context, state) => const ToolsScreen(),
+        ),
+        GoRoute(
+          path: '/reminders',
+          builder: (context, state) => const RemindersScreen(),
         ),
         GoRoute(
           path: '/tasks',

@@ -1,108 +1,106 @@
 import datetime
 import logging
-from googleapiclient.discovery import build
-from app.services.google_oauth import oauth_service
+from app.services.supabase import supabase_client
+import uuid
 
 logger = logging.getLogger(__name__)
 
 class CalendarService:
-    def get_service(self):
-        creds = oauth_service.get_credentials()
-        if not creds:
-            logger.warning("No valid Google credentials found.")
-            return None
-        return build('calendar', 'v3', credentials=creds)
-
-    def get_events(self, start_date_str: str = None, end_date_str: str = None):
+    def get_events(self, start_date_str: str = None, end_date_str: str = None, user_id: str = None):
         try:
-            service = self.get_service()
-            if not service:
-                return [{"error": "Not authenticated. Please connect Google Calendar in settings."}]
-
-            # Default to now if no start date
-            if start_date_str:
-                start_dt = datetime.datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-            else:
-                start_dt = datetime.datetime.utcnow()
+            # Query Supabase 'calendar_events'
+            query = supabase_client.table('calendar_events').select("*")
             
-            time_min = start_dt.isoformat() + 'Z'
+            if user_id:
+                query = query.eq('user_id', user_id)
             
-            logger.info(f"Fetching Google Calendar events from {time_min}")
+            # Simple date filtering if provided (assuming user wants >= start)
+            # You might need better date filtering depending on requirements
+            # But specific date range filtering in Supabase requires exact field matching or operators
             
-            events_result = service.events().list(
-                calendarId='primary', 
-                timeMin=time_min,
-                maxResults=10, 
-                singleEvents=True,
-                orderBy='startTime'
-            ).execute()
+            # For now, let's just fetch all and filter in python or basic order
+            # (Optimise later for performance)
             
-            events = events_result.get('items', [])
-            logger.info(f"Found {len(events)} events")
+            result = query.order('start_time').execute()
+            events = result.data
+            
+            logger.info(f"Found {len(events)} events in Supabase")
 
             structured = []
             for e in events:
-                start = e['start'].get('dateTime', e['start'].get('date'))
+                # Map Supabase fields to frontend expectation
                 structured.append({
                     "id": e['id'],
-                    "summary": e.get('summary', 'No Title'),
-                    "start": start,
-                    "link": e.get('htmlLink', ''),
-                    "location": e.get('location', ''),
-                    "description": e.get('description', '')
+                    "summary": e['summary'],
+                    "start": e['start_time'], # Expecting ISO string
+                    "description": e.get('description', ''),
+                    "end": e.get('end_time', ''),
+                    # Add location if you add it to schema, otherwise empty
+                    "location": "" 
                 })
             return structured
 
         except Exception as e:
-            logger.error(f"Error fetching calendar: {e}")
+            logger.error(f"Error fetching Supabase calendar: {e}")
             return [{"error": f"Error fetching calendar: {e}"}]
 
-    def create_event(self, summary: str, start_time: str, duration_minutes: int = 60, description: str = None):
+    def create_event(self, summary: str, start_time: str, duration_minutes: int = 60, description: str = None, user_id: str = None):
         try:
-            service = self.get_service()
-            if not service:
-                return "Not authenticated"
-
             # Parse start time
             try:
                 start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', '+00:00'))
             except ValueError:
-                # Handle cases where ISO format might be slightly off
-                start_dt = datetime.datetime.now() # Fallback
+                start_dt = datetime.datetime.now()
 
             end_dt = start_dt + datetime.timedelta(minutes=duration_minutes)
 
-            event = {
+            data = {
                 'summary': summary,
-                'description': description or '',
-                'start': {
-                    'dateTime': start_dt.isoformat(),
-                    'timeZone': 'Asia/Kolkata', # Defaulting to IST as per project context
-                },
-                'end': {
-                    'dateTime': end_dt.isoformat(),
-                    'timeZone': 'Asia/Kolkata',
-                },
+                'description': description,
+                'start_time': start_dt.isoformat(),
+                'end_time': end_dt.isoformat(),
             }
-
-            created_event = service.events().insert(calendarId='primary', body=event).execute()
-            logger.info(f"Event created: {created_event.get('htmlLink')}")
+            if user_id:
+                data['user_id'] = user_id
+            
+            res = supabase_client.table('calendar_events').insert(data).execute()
+            
             return f"Event created: {summary} at {start_dt.strftime('%H:%M')}"
-
         except Exception as e:
-            logger.error(f"Error creating event: {e}")
+            logger.error(f"Create Event Error: {e}")
             return f"Error creating event: {e}"
+
+    def update_event(self, event_id: str, summary: str = None, start_time: str = None, duration_minutes: int = None, description: str = None):
+        try:
+            data = {}
+            if summary:
+                data['summary'] = summary
+            if description:
+                data['description'] = description
+            
+            if start_time:
+                 try:
+                    start_dt = datetime.datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                    data['start_time'] = start_dt.isoformat()
+                    
+                    if duration_minutes:
+                         end_dt = start_dt + datetime.timedelta(minutes=duration_minutes)
+                         data['end_time'] = end_dt.isoformat()
+                 except ValueError:
+                    pass
+
+            supabase_client.table('calendar_events').update(data).eq('id', event_id).execute()
+            return f"Event updated: {summary or event_id}"
+        except Exception as e:
+            logger.error(f"Update Event Error: {e}")
+            return f"Error updating event: {e}"
 
     def delete_event(self, event_id: str):
         try:
-            service = self.get_service()
-            if not service:
-                return "Not authenticated"
-            
-            service.events().delete(calendarId='primary', eventId=event_id).execute()
+            supabase_client.table('calendar_events').delete().eq('id', event_id).execute()
             return "Event deleted"
         except Exception as e:
-            logger.error(f"Error deleting event: {e}")
+            logger.error(f"Delete Event Error: {e}")
             return f"Error deleting event: {e}"
 
 calendar_service = CalendarService()

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/core/theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // State to hold selected date and events
 // State to hold selected date and events
@@ -29,7 +30,8 @@ final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((r
 
   // 1. Try to fetch from API
   try {
-    final res = await apiClient.get('/calendar/events?date=$dateStr');
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final res = await apiClient.get('/calendar/events?date=$dateStr&user_id=$userId');
     if (res['events'] is List) {
       final events = res['events'] as List<dynamic>;
       // Save to cache
@@ -71,7 +73,8 @@ final scheduleEventsProvider = FutureProvider<List<dynamic>>((ref) async {
   final endStr = "${end.year}-${end.month.toString().padLeft(2,'0')}-${end.day.toString().padLeft(2,'0')}";
   
   try {
-    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr');
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr&user_id=$userId');
     if (res['events'] is List) {
       return res['events'] as List<dynamic>;
     }
@@ -577,6 +580,7 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
           'start_time': startStr,
           'duration_minutes': 60,
           'description': _descriptionController.text,
+          'user_id': Supabase.instance.client.auth.currentUser?.id,
         });
       }
       
