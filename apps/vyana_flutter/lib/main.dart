@@ -23,18 +23,34 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: 'https://bqqdjkfgkwugqssvowxi.supabase.co',
-    anonKey: 'sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO',
-  );
+  try {
+    await Supabase.initialize(
+      url: 'https://bqqdjkfgkwugqssvowxi.supabase.co',
+      anonKey: 'sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO',
+    );
+  } catch (e) {
+    debugPrint("Supabase init error: $e");
+  }
   
   // Init Sounds
-  await SoundService.init();
+  try {
+    await SoundService.init();
+  } catch (e) {
+    debugPrint("Sound init error: $e");
+  }
   
   // Init Notifications
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  final InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  try {
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+    final InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsDarwin,
+    );
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  } catch (e) {
+    debugPrint("Notification init error: $e");
+  }
 
   runApp(const ProviderScope(child: VyanaApp()));
 }
