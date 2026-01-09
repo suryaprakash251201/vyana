@@ -33,7 +33,8 @@ class SearchService:
                 if abstract and heading:
                     result = f"{heading}: {abstract}"
                     if abstract_url:
-                        result += f"\\nSource: {abstract_url}"
+                        result += f"
+Source: {abstract_url}"
                     return result
                 
                 # Try related topics
@@ -46,7 +47,8 @@ class SearchService:
                         if text:
                             result = text
                             if url:
-                                result += f"\\nSource: {url}"
+                                result += f"
+Source: {url}"
                             return result
                 
                 return f"No direct answer found for '{query}'. Try a more specific search."
@@ -64,7 +66,8 @@ class SearchService:
         try:
             search_query = f"{topic} news"
             result = self.web_search(search_query)
-            return f"Latest on {topic}:\\n{result}"
+            return f"Latest on {topic}:
+{result}"
         except Exception as e:
             logger.error(f"News error: {e}")
             return f"News service unavailable: {str(e)}"

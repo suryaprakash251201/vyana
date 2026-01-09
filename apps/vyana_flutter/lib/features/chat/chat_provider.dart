@@ -147,6 +147,9 @@ class Chat extends _$Chat {
   }
 
   void _appendContent(String id, String newContent) {
+    // Skip blank/empty content to prevent blank messages
+    if (newContent.trim().isEmpty) return;
+    
     state = state.copyWith(
       messages: state.messages.map((m) {
         if (m.id == id) {
