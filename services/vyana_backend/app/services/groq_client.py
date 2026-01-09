@@ -378,16 +378,21 @@ class GroqClient:
                 return weather_service.get_forecast(args.get("city", "Mumbai"))
             # Search tools
             elif function_name == "web_search":
-                return search_service.web_search(args["query"])
+                result = search_service.web_search(args["query"])
+                return json.dumps({"result": result})
             elif function_name == "get_news":
-                return search_service.get_news(args.get("topic", "technology"))
+                result = search_service.get_news(args.get("topic", "technology"))
+                return json.dumps({"result": result})
             # Utility tools
             elif function_name == "calculate":
-                return utils_service.calculate(args["expression"])
+                result = utils_service.calculate(args["expression"])
+                return json.dumps({"result": result})
             elif function_name == "convert_currency":
-                return utils_service.convert_currency(args["amount"], args["from_currency"], args["to_currency"])
+                result = utils_service.convert_currency(args["amount"], args["from_currency"], args["to_currency"])
+                return json.dumps({"result": result})
             elif function_name == "convert_units":
-                return utils_service.convert_units(args["value"], args["from_unit"], args["to_unit"])
+                result = utils_service.convert_units(args["value"], args["from_unit"], args["to_unit"])
+                return json.dumps({"result": result})
             else:
                 return "Unknown function"
         except Exception as e:
