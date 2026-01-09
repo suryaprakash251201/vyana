@@ -82,5 +82,54 @@ class SqliteTasksRepo(AbstractTasksRepo):
             cursor.execute("UPDATE tasks SET is_completed = 1 WHERE id = ?", (task_id,))
             conn.commit()
             return cursor.rowcount > 0
+    
+    def update_task(self, task_id: int, title: str = None, due_date: str = None) -> bool:
+        """Update task title and/or due date"""
+        if not title and not due_date:
+            return False
+        
+        updates = []
+        params = []
+        
+        if title:
+            updates.append("title = ?")
+            params.append(title)
+        if due_date:
+            updates.append("due_date = ?")
+            params.append(due_date)
+        
+        params.append(task_id)
+        query = f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?"
+        
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def delete_task(self, task_id: int) -> bool:
+        """Delete a task"""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def search_tasks(self, query: str) -> List[TaskItem]:
+        """Search tasks by title"""
+        search_query = "SELECT id, title, is_completed, created_at, due_date FROM tasks WHERE title LIKE ? AND is_completed = 0"
+        
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute(search_query, (f"%{query}%",)).fetchall()
+            return [
+                TaskItem(
+                    id=row[0],
+                    title=row[1],
+                    is_completed=bool(row[2]),
+                    created_at=row[3],
+                    due_date=row[4]
+                ) for row in rows
+            ]
 
 tasks_repo = SqliteTasksRepo()

@@ -3,7 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:gap/gap.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/main.dart'; // Access global plugin instance
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 class RemindersScreen extends StatefulWidget {
@@ -47,7 +47,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
     }
 
     // Initialize Timezone (ensure this is called in main or here once)
-    tz.initializeTimeZones();
+    tz_data.initializeTimeZones();
     
     // Convert to TZDateTime
     // Assuming local, requires timezone package setup properly.
@@ -77,9 +77,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         title,
         tz.TZDateTime.from(scheduledDate, tz.local),
         notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime);
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle);
 
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reminder set for ${time.format(context)}')));

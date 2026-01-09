@@ -45,11 +45,21 @@ void main() async {
   try {
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+    
+    // Windows-specific initialization
+    const WindowsInitializationSettings initializationSettingsWindows = WindowsInitializationSettings(
+      appName: 'Vyana',
+      appUserModelId: 'com.vyana.app',
+      guid: 'a3f02e3b-1234-5678-9abc-def012345678',
+    );
+    
     final InitializationSettings initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
         iOS: initializationSettingsDarwin,
+        windows: initializationSettingsWindows,
     );
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  } catch (e) {
     debugPrint("Notification init error: $e");
   }
   

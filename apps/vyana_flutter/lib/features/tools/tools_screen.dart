@@ -70,6 +70,11 @@ class ToolsScreen extends StatelessWidget {
                       AppColors.accentPink,
                       () => context.go('/calendar'),
                     ),
+                    _buildToolCard(
+                      context,
+                      "Mail",
+                      Icons.mail_outline,
+                      Colors.orange,
                       () => context.go('/mail'),
                     ),
                     _buildToolCard(

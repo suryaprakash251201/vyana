@@ -9,6 +9,9 @@ from app.services.calendar_service import calendar_service
 from app.services.gmail_service import gmail_service
 from app.services.notes_service import notes_service
 from app.services.mcp_service import mcp_service
+from app.services.weather_service import weather_service
+from app.services.search_service import search_service
+from app.services.utils_service import utils_service
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -141,6 +144,181 @@ class GroqClient:
                         "required": ["to_email", "subject", "body"]
                     }
                 }
+            },
+            # Task Management Enhancements
+            {
+                "type": "function",
+                "function": {
+                    "name": "complete_task",
+                    "description": "Marks a task as completed",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {"type": "integer", "description": "ID of the task to complete"}
+                        },
+                        "required": ["task_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_task",
+                    "description": "Updates an existing task's title or due date",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {"type": "integer", "description": "ID of the task"},
+                            "title": {"type": "string", "description": "New title (optional)"},
+                            "due_date": {"type": "string", "description": "New due date in YYYY-MM-DD format (optional)"}
+                        },
+                        "required": ["task_id"]
+                   }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "delete_task",
+                    "description": "Deletes a task permanently",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {"type": "integer", "description": "ID of the task to delete"}
+                        },
+                        "required": ["task_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_tasks",
+                    "description": "Searches tasks by title keyword",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search keyword"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            # Notes Enhancement
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_notes",
+                    "description": "Retrieves recent notes",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "description": "Number of notes to retrieve, default 10"}
+                        }
+                    }
+                }
+            },
+            # Weather Tools
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Gets current weather for a city",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "city": {"type": "string", "description": "City name, default Mumbai"}
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_forecast",
+                    "description": "Gets 3-day weather forecast for a city",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "city": {"type": "string", "description": "City name, default Mumbai"}
+                        }
+                    }
+                }
+            },
+            # Web Search Tools
+            {
+                "type": "function",
+                "function": {
+                    "name": "web_search",
+                    "description": "Searches the web for information",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search query"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_news",
+                    "description": "Gets latest news on a topic",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "topic": {"type": "string", "description": "News topic, default 'technology'"}
+                        }
+                    }
+                }
+            },
+            # Utility Tools
+            {
+                "type": "function",
+                "function": {
+                    "name": "calculate",
+                    "description": "Evaluates a mathematical expression",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "expression": {"type": "string", "description": "Math expression like '2 + 2' or '10 * 5'"}
+                        },
+                        "required": ["expression"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "convert_currency",
+                    "description": "Converts currency from one type to another",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "amount": {"type": "number", "description": "Amount to convert"},
+                            "from_currency": {"type": "string", "description": "Source currency code (USD, EUR, INR, etc.)"},
+                            "to_currency": {"type": "string", "description": "Target currency code"}
+                        },
+                        "required": ["amount", "from_currency", "to_currency"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "convert_units",
+                    "description": "Converts units (length, weight, temperature)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "value": {"type": "number", "description": "Value to convert"},
+                            "from_unit": {"type": "string", "description": "Source unit (m, km, kg, lb, c, f, etc.)"},
+                            "to_unit": {"type": "string", "description": "Target unit"}
+                        },
+                        "required": ["value", "from_unit", "to_unit"]
+                    }
+                }
             }
         ]
         
@@ -167,7 +345,19 @@ class GroqClient:
                 return json.dumps({"id": result.id, "status": "Task created"})
             elif function_name == "list_tasks":
                 tasks = tasks_repo.list_tasks(include_completed=False)
-                return json.dumps([{"title": t.title, "due": t.due_date} for t in tasks])
+                return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
+            elif function_name == "complete_task":
+                success = tasks_repo.complete_task(args["task_id"])
+                return json.dumps({"success": success, "message": "Task completed" if success else "Task not found"})
+            elif function_name == "update_task":
+                success = tasks_repo.update_task(args["task_id"], args.get("title"), args.get("due_date"))
+                return json.dumps({"success": success, "message": "Task updated" if success else "Task not found"})
+            elif function_name == "delete_task":
+                success = tasks_repo.delete_task(args["task_id"])
+                return json.dumps({"success": success, "message": "Task deleted" if success else "Task not found"})
+            elif function_name == "search_tasks":
+                tasks = tasks_repo.search_tasks(args["query"])
+                return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
             elif function_name == "get_calendar_today":
                 return str(calendar_service.get_events())
             elif function_name == "get_unread_emails_summary":
@@ -176,8 +366,28 @@ class GroqClient:
                 return str(calendar_service.create_event(args["summary"], args["start_time"], args.get("duration_minutes", 60)))
             elif function_name == "take_notes":
                 return str(notes_service.save_note(args["content"], args.get("title")))
+            elif function_name == "get_notes":
+                notes = notes_service.get_notes(args.get("limit", 10))
+                return json.dumps(notes)
             elif function_name == "send_email":
                 return str(gmail_service.send_email(args["to_email"], args["subject"], args["body"]))
+            # Weather tools
+            elif function_name == "get_weather":
+                return weather_service.get_weather(args.get("city", "Mumbai"))
+            elif function_name == "get_forecast":
+                return weather_service.get_forecast(args.get("city", "Mumbai"))
+            # Search tools
+            elif function_name == "web_search":
+                return search_service.web_search(args["query"])
+            elif function_name == "get_news":
+                return search_service.get_news(args.get("topic", "technology"))
+            # Utility tools
+            elif function_name == "calculate":
+                return utils_service.calculate(args["expression"])
+            elif function_name == "convert_currency":
+                return utils_service.convert_currency(args["amount"], args["from_currency"], args["to_currency"])
+            elif function_name == "convert_units":
+                return utils_service.convert_units(args["value"], args["from_unit"], args["to_unit"])
             else:
                 return "Unknown function"
         except Exception as e:
