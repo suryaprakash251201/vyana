@@ -62,6 +62,22 @@ class CalendarService:
             }
             if user_id:
                 data['user_id'] = user_id
+            else:
+                # Fallback: Try to get first user (requires Service Role Key)
+                try:
+                    users_list = supabase_client.auth.admin.list_users()
+                    if users_list: # list_users returns an object with 'users' usually, or list
+                        # supabase-py v2 returns UserList object?
+                        # Let's check typical response. Usually `users` property.
+                        users = getattr(users_list, 'users', [])
+                        if not users and isinstance(users_list, list):
+                             users = users_list
+                        
+                        if users:
+                            data['user_id'] = users[0].id
+                            logger.info(f"Using fallback user_id: {data['user_id']}")
+                except Exception as ex:
+                    logger.warning(f"Could not fetch fallback user: {ex}")
             
             res = supabase_client.table('calendar_events').insert(data).execute()
             
