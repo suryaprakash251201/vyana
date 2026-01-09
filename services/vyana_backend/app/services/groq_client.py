@@ -486,7 +486,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                         logger.error(f"Rescue failed: {rescue_err}")
 
                 if rescue_result:
-                     yield f"data: {json.dumps({'type': 'text', 'content': rescue_result})}\\n\\n"
+                     yield f"data: {json.dumps({'type': 'text', 'content': rescue_result})}\n\n"
                      return # End stream
                 
                 # If tool use fails (e.g. empty output) and NOT rescued, try without tools
