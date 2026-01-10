@@ -481,22 +481,51 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                     try:
                         # Extract the inner failed generation string
                         # Error format: ... 'failed_generation': '<function=name>args' ...
-                        # Simplified regex to find <function=...>
-                        match = re.search(r"<function=(\w+)>(.+?)(?:'|\}|$)", error_str)
+                        # Try multiple patterns
+                        
+                        # Pattern 1: <function=name>{"args"}
+                        match = re.search(r"<function=(\w+)>(\{.+?\})", error_str)
+                        
+                        # Pattern 2: function_name>{"args"} (missing <)
+                        if not match:
+                            match = re.search(r"(\w+)>\s*(\{.+?\})", error_str)
+                        
+                        # Pattern 3: <function=name>{args (incomplete JSON - find until end)
+                        if not match:
+                            match = re.search(r"<function=(\w+)>\s*(\{.+)", error_str)
+                        
                         if match:
                             fn_name = match.group(1)
                             fn_args = match.group(2)
-                            # Cleanup arg string if needed (sometimes it has trailing quote if regex caught it)
-                            if fn_args.endswith("'}"): fn_args = fn_args[:-2]
-                            if fn_args.endswith("'"): fn_args = fn_args[:-1]
+                            
+                            # Clean up the JSON string
+                            # Remove trailing characters that aren't part of JSON
+                            fn_args = fn_args.strip()
+                            
+                            # Remove trailing quote/brace if they're escape artifacts
+                            while fn_args and fn_args[-1] in ["'", "\\", " "]:
+                                fn_args = fn_args[:-1]
+                            
+                            # Ensure JSON is complete (has closing brace)
+                            open_braces = fn_args.count('{') - fn_args.count('}')
+                            if open_braces > 0:
+                                fn_args = fn_args + '}' * open_braces
+                            
+                            # Replace single quotes with double quotes if needed
+                            if "'" in fn_args and '"' not in fn_args:
+                                fn_args = fn_args.replace("'", '"')
                             
                             logger.info(f"Rescuing tool call: {fn_name} args: {fn_args}")
                             
                             # Execute
                             fn_result = self._execute_function(fn_name, fn_args)
                             rescue_result = f"I have executed the request. Result: {fn_result}"
+                    except json.JSONDecodeError as je:
+                        logger.error(f"Rescue JSON parse failed: {je}")
+                        rescue_result = "I tried to execute that action but encountered a formatting issue. Please try rephrasing your request."
                     except Exception as rescue_err:
                         logger.error(f"Rescue failed: {rescue_err}")
+                        rescue_result = f"I tried to execute that action but encountered an error: {rescue_err}"
 
                 if rescue_result:
                      yield f"data: {json.dumps({'type': 'text', 'content': rescue_result})}\n\n"
