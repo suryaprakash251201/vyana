@@ -51,13 +51,13 @@ class WeatherService:
                 data = response.json()
                 weather_data = data.get('weather', [])[:3]  # Next 3 days
                 
-                forecast = f"3-Day Forecast for {city}:\\n"
+                forecast = f"3-Day Forecast for {city}:\n"
                 for day in weather_data:
                     date = day.get('date')
                     max_temp = day.get('maxtempC')
                     min_temp = day.get('mintempC')
                     desc = day.get('hourly', [{}])[0].get('weatherDesc', [{}])[0].get('value', 'N/A')
-                    forecast += f"- {date}: {desc}, {min_temp}°C - {max_temp}°C\\n"
+                    forecast += f"- {date}: {desc}, {min_temp}°C - {max_temp}°C\n"
                 
                 return forecast.strip()
             else:

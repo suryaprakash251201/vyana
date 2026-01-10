@@ -23,8 +23,18 @@ app.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 app.include_router(gmail.router, prefix="/gmail", tags=["gmail"])
 app.include_router(voice.router, prefix="/voice", tags=["voice"])
 app.include_router(tools.router, prefix="/tools", tags=["tools"])
-app.include_router(mcp.router)  # MCP routes (prefix defined in router)
+app.include_router(mcp.router)  # MCP client routes (prefix defined in router)
+
+# Mount FastMCP Server at /mcp-server (MCP protocol endpoint)
+# This exposes Vyana's tools via Model Context Protocol
+try:
+    from app.mcp.server import mcp_server
+    app.mount("/mcp-server", mcp_server.sse_app())
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).warning(f"FastMCP server not mounted: {e}")
 
 @app.get("/")
 def read_root():
-    return {"message": "Vyana Backend Running"}
+    return {"message": "Vyana Backend Running", "mcp_endpoint": "/mcp-server"}
+

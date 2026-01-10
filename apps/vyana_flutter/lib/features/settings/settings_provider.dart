@@ -16,6 +16,7 @@ abstract class SettingsState with _$SettingsState {
     required bool isDarkTheme,
     required String geminiModel,
     required bool memoryEnabled,
+    required bool mcpEnabled,
     @Default('') String customInstructions,
   }) = _SettingsState;
 }
@@ -32,6 +33,7 @@ class Settings extends _$Settings {
       isDarkTheme: prefs.getBool('isDarkTheme') ?? false,
       geminiModel: prefs.getString('geminiModel') ?? 'llama-3.1-8b-instant',
       memoryEnabled: prefs.getBool('memoryEnabled') ?? true,
+      mcpEnabled: prefs.getBool('mcpEnabled') ?? true,
       customInstructions: prefs.getString('customInstructions') ?? '',
     );
   }
@@ -64,6 +66,12 @@ class Settings extends _$Settings {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('memoryEnabled', value);
     state = AsyncData(state.value!.copyWith(memoryEnabled: value));
+  }
+
+  Future<void> toggleMcp(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('mcpEnabled', value);
+    state = AsyncData(state.value!.copyWith(mcpEnabled: value));
   }
 
   Future<void> setModel(String model) async {

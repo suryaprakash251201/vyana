@@ -40,7 +40,7 @@ class GroqClient:
             logger.error(f"Transcription error: {e}")
             raise e
 
-    def _get_tools(self):
+    def _get_tools(self, include_mcp: bool = True):
         """Returns list of tools in OpenAI/Groq format, including MCP tools"""
         # Base tools (built-in)
         base_tools = [
@@ -323,10 +323,12 @@ class GroqClient:
         ]
         
         # Add MCP tools dynamically from connected MCP servers
-        mcp_tools = mcp_service.get_all_tools_for_llm()
-        logger.debug(f"Adding {len(mcp_tools)} MCP tools to AI")
+        if include_mcp:
+            mcp_tools = mcp_service.get_all_tools_for_llm()
+            logger.debug(f"Adding {len(mcp_tools)} MCP tools to AI")
+            return base_tools + mcp_tools
         
-        return base_tools + mcp_tools
+        return base_tools
 
     def _execute_function(self, function_name, function_args):
         """Execute a function call and return result as JSON string"""
@@ -399,7 +401,7 @@ class GroqClient:
             logger.error(f"Error executing {function_name}: {e}")
             return f"Error: {str(e)}"
 
-    async def stream_chat(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None):
+    async def stream_chat(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None, mcp_enabled: bool = True):
         # Use user provided model or default to llama-3.1-8b-instant
         model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name) else self.model_name
         
@@ -418,7 +420,8 @@ class GroqClient:
         day_of_week = now.strftime("%A")
         
         # Build system prompt with context
-        system_content = f"""You are Vyana, an advanced and helpful personal AI assistant. 
+        system_content = f"""You are Vyana, a cheerful, intelligent, and highly capable personal assistant with a friendly, feminine persona. You are here to help the user with their daily life, work, and productivity in a warm and engaging way.
+
 Current Date: {current_date} ({day_of_week})
 Current Time: {current_datetime} (IST - Indian Standard Time)
 
@@ -428,11 +431,16 @@ Time & Scheduling Instructions:
 - Example: If today is 2026-01-05 and user says '4pm today', use 2026-01-05T16:00:00.
 
 Interaction Style:
-- Be concise, professional, yet warm and engaging.
+- Persona: Act like a supportive, smart, and friendly personal assistant (like 'JARVIS' but with a warm, feminine touch). Be proactive and helpful.
+- Tone: Conversational, clear, positive, and professional but not stiff.
 - Using Llama 3.1 8B, optimize your responses for clarity and helpfulness.
-- If the user asks for a schedule or calendar action, prioritize using the available tools.
-- **CRITICAL:** When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
-- Present financial or list data in clean markdown tables or bullet points, not as raw data structures.
+
+Tool Usage & Data Presentation:
+- **MAXIMIZE TOOL USAGE**: You have access to powerful tools including Calendar, Email, Tasks, and external MCP tools (like Stock Market access).
+- **ALWAYS CHECK TOOLS**: If a user's request *might* be solved or enhanced by a tool, USE IT. Do not guess or hallucinate data.
+- **MCP Tools**: You have access to Model Context Protocol (MCP) tools. Use them extensively when relevant.
+- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
+- **Formatting**: Present financial or list data in clean markdown tables or bullet points.
 
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
         
@@ -452,7 +460,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         # Add current user message
         groq_messages.append({"role": "user", "content": messages[-1].content})
 
-        tools = self._get_tools() if tools_enabled else None
+        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else None
         
         try:
             # Attempt 1: With Tools

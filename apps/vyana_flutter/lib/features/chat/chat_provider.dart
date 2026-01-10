@@ -98,6 +98,7 @@ class Chat extends _$Chat {
           'model': settings.geminiModel,
           'memory_enabled': settings.memoryEnabled,
           'custom_instructions': settings.customInstructions,
+          'mcp_enabled': settings.mcpEnabled,
         }
       });
 

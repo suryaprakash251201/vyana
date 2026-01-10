@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ENABLE_TOOLS: bool = True
     TAMIL_MODE: bool = False
 
+    # MCP Server Configuration
+    MCP_SERVER_NAME: str = "VyanaMCP"
+    MCP_SERVER_PATH: str = "/mcp-server"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra='ignore')
 
 settings = Settings()

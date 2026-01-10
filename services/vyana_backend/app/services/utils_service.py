@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 class UtilsService:
     def __init__(self):
-        # Free currency API - exchangerate.host (no API key required, live rates)
-        self.currency_api_url = "https://api.exchangerate.host/latest"
+        # Free currency API - open.er-api.com (no API key required, live rates)
+        self.currency_api_url = "https://open.er-api.com/v6/latest"
     
     def calculate(self, expression: str) -> str:
         """Safely evaluate mathematical expressions"""
@@ -32,18 +32,16 @@ class UtilsService:
             from_currency = from_currency.upper()
             to_currency = to_currency.upper()
             
-            # Fetch live rates from exchangerate.host (free, no API key)
-            params = {
-                'base': from_currency,
-                'symbols': to_currency
-            }
+            # Fetch live rates from open.er-api.com (free, no API key)
+            # API format: https://open.er-api.com/v6/latest/{base_currency}
+            api_url = f"{self.currency_api_url}/{from_currency}"
             
-            response = requests.get(self.currency_api_url, params=params, timeout=5)
+            response = requests.get(api_url, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
                 
-                if data.get('success') and to_currency in data.get('rates', {}):
+                if data.get('result') == 'success' and to_currency in data.get('rates', {}):
                     rate = data['rates'][to_currency]
                     converted = amount * rate
                     

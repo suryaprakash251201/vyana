@@ -298,6 +298,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Divider(height: 1),
                         SwitchListTile(
+                          title: const Text("Enable MCP Tools"),
+                          subtitle: const Text("Allow access to external MCP tools"),
+                          value: settings.mcpEnabled,
+                          onChanged: (val) => ref.read(settingsProvider.notifier).toggleMcp(val),
+                        ),
+                        const Divider(height: 1),
+                        SwitchListTile(
                           title: const Text("Enable Memory"),
                           subtitle: const Text("Remember context across sessions"),
                           value: settings.memoryEnabled,

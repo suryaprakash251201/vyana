@@ -13,6 +13,7 @@ services:
       # - ZERODHA_API_KEY=${ZERODHA_API_KEY}
       # - ZERODHA_API_SECRET=${ZERODHA_API_SECRET}
       # - ZERODHA_REDIRECT_URI=${ZERODHA_REDIRECT_URI}
+      # MCP Server runs at /mcp-server endpoint (same container, no extra config needed)
     volumes:
       - ./data:/app/data
       - ./vyana.db:/app/vyana.db # Persist SQLite database
