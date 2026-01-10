@@ -181,6 +181,21 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                       ),
                                     )
                                   : null,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600, size: 20),
+                                    onPressed: () => _showEditTaskDialog(context, ref, task),
+                                    tooltip: 'Edit task',
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete_outline, color: AppColors.errorRed.withOpacity(0.7), size: 20),
+                                    onPressed: () => _showDeleteConfirmation(context, ref, task),
+                                    tooltip: 'Delete task',
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -330,6 +345,126 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showEditTaskDialog(BuildContext context, WidgetRef ref, TaskItem task) {
+    final titleController = TextEditingController(text: task.title);
+    final dueDateController = TextEditingController(text: task.dueDate ?? '');
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Gap(20),
+            Text(
+              'Edit Task',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const Gap(16),
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Task Title',
+                prefixIcon: Icon(Icons.edit_outlined, color: Colors.grey.shade400),
+              ),
+            ),
+            const Gap(12),
+            TextField(
+              controller: dueDateController,
+              decoration: InputDecoration(
+                labelText: 'Due Date (YYYY-MM-DD)',
+                prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.grey.shade400),
+                hintText: 'e.g., 2026-01-15',
+              ),
+            ),
+            const Gap(20),
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.secondaryGradient,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    if (titleController.text.isNotEmpty) {
+                      ref.read(tasksProvider.notifier).updateTask(
+                        task.id,
+                        title: titleController.text,
+                        dueDate: dueDateController.text.isNotEmpty ? dueDateController.text : null,
+                      );
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.save_rounded, color: Colors.white),
+                        Gap(8),
+                        Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref, TaskItem task) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Task'),
+        content: Text('Are you sure you want to delete "${task.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(tasksProvider.notifier).deleteTask(task.id);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.errorRed),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

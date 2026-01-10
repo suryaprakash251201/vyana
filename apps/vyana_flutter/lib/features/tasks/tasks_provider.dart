@@ -63,4 +63,27 @@ class Tasks extends _$Tasks {
       // Handle error
     }
   }
+
+  Future<void> updateTask(int id, {String? title, String? dueDate}) async {
+    final apiClient = ref.read(apiClientProvider);
+    try {
+      final body = <String, dynamic>{'task_id': id};
+      if (title != null) body['title'] = title;
+      if (dueDate != null) body['due_date'] = dueDate;
+      await apiClient.post('/tasks/update', body: body);
+      ref.invalidateSelf();
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> deleteTask(int id) async {
+    final apiClient = ref.read(apiClientProvider);
+    try {
+      await apiClient.post('/tasks/delete', body: {'task_id': id});
+      ref.invalidateSelf();
+    } catch (e) {
+      // Handle error
+    }
+  }
 }
