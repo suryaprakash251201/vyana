@@ -14,17 +14,32 @@ class CalendarService:
             if user_id:
                 query = query.eq('user_id', user_id)
             
-            # Simple date filtering if provided (assuming user wants >= start)
-            # You might need better date filtering depending on requirements
-            # But specific date range filtering in Supabase requires exact field matching or operators
+            # Date filtering: if start_date_str is provided, filter for that specific day
+            if start_date_str:
+                # start_date_str format: YYYY-MM-DD
+                # Filter events where start_time is on that day
+                start_of_day = f"{start_date_str}T00:00:00"
+                end_of_day = f"{start_date_str}T23:59:59"
+                query = query.gte('start_time', start_of_day).lte('start_time', end_of_day)
             
-            # For now, let's just fetch all and filter in python or basic order
-            # (Optimise later for performance)
+            # If end_date_str is provided (for range queries like schedule view)
+            if end_date_str and not start_date_str:
+                # This shouldn't happen normally, but handle it
+                pass
+            elif start_date_str and end_date_str:
+                # Range query for schedule view
+                start_of_range = f"{start_date_str}T00:00:00"
+                end_of_range = f"{end_date_str}T23:59:59"
+                # Re-build query for range
+                query = supabase_client.table('calendar_events').select("*")
+                if user_id:
+                    query = query.eq('user_id', user_id)
+                query = query.gte('start_time', start_of_range).lte('start_time', end_of_range)
             
             result = query.order('start_time').execute()
             events = result.data
             
-            logger.info(f"Found {len(events)} events in Supabase")
+            logger.info(f"Found {len(events)} events in Supabase for date={start_date_str}")
 
             structured = []
             for e in events:
