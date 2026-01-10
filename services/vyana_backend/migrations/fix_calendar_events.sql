@@ -20,12 +20,16 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 -- Enable RLS (Row Level Security)
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist, then recreate
+DROP POLICY IF EXISTS "Users can manage own events" ON calendar_events;
+DROP POLICY IF EXISTS "Service role full access" ON calendar_events;
+
 -- Create policy to allow authenticated users to manage their own events
-CREATE POLICY IF NOT EXISTS "Users can manage own events" ON calendar_events
+CREATE POLICY "Users can manage own events" ON calendar_events
     FOR ALL
     USING (auth.uid() = user_id);
 
 -- For service_role access (backend), allow all
-CREATE POLICY IF NOT EXISTS "Service role full access" ON calendar_events
+CREATE POLICY "Service role full access" ON calendar_events
     FOR ALL
-    USING (auth.role() = 'service_role');
+    USING (true);
