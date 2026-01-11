@@ -13,6 +13,7 @@ import 'package:vyana_flutter/features/home/dashboard_screen.dart';
 import 'package:vyana_flutter/features/auth/login_screen.dart';
 import 'package:vyana_flutter/features/tools/tools_screen.dart';
 import 'package:vyana_flutter/features/tools/reminders_screen.dart';
+import 'package:vyana_flutter/features/voice_assistant/voice_assistant_screen.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -116,6 +117,10 @@ final _router = GoRouter(
           builder: (context, state) => const SettingsScreen(),
         ),
       ],
+    ),
+    GoRoute(
+      path: '/voice-assistant',
+      builder: (context, state) => const VoiceAssistantScreen(),
     ),
   ],
 );

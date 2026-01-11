@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import chat, tasks, google_auth, health, calendar, gmail, voice, mcp, tools
+from app.routes import chat, tasks, google_auth, health, calendar, gmail, voice, mcp, tools, tts
 
 app = FastAPI(title="Vyana Backend", version="0.1.0")
 
@@ -23,6 +23,7 @@ app.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 app.include_router(gmail.router, prefix="/gmail", tags=["gmail"])
 app.include_router(voice.router, prefix="/voice", tags=["voice"])
 app.include_router(tools.router, prefix="/tools", tags=["tools"])
+app.include_router(tts.router, prefix="/tts", tags=["tts"])
 app.include_router(mcp.router)  # MCP client routes (prefix defined in router)
 
 # Mount FastMCP Server at /mcp-server (MCP protocol endpoint)

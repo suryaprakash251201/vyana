@@ -7,6 +7,7 @@ import 'package:vyana_flutter/features/tasks/tasks_provider.dart';
 import 'package:vyana_flutter/features/calendar/calendar_screen.dart';
 import 'package:vyana_flutter/features/auth/supabase_auth_service.dart';
 import 'package:vyana_flutter/features/notifications/notifications_screen.dart';
+import 'package:vyana_flutter/features/voice_assistant/voice_assistant_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -28,6 +29,16 @@ class DashboardScreen extends ConsumerWidget {
     final calendarAsync = ref.watch(calendarEventsProvider(DateUtils.dateOnly(DateTime.now())));
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const VoiceAssistantScreen()),
+          );
+        },
+        backgroundColor: AppColors.primaryPurple,
+        child: const Icon(Icons.mic, color: Colors.white),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
