@@ -53,16 +53,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
 
   Future<void> _startRecording() async {
     // Prevent race conditions from multiple triggers
-    if (_isRecordingLocked || _isListening || _isProcessingAudio) return;
+    if (_isRecordingLocked || _isListening || _isProcessingAudio) {
+      debugPrint('Voice: Recording locked or already in progress');
+      return;
+    }
     _isRecordingLocked = true;
     
     try {
+      // Check if recorder is in a valid state
+      final isRecording = await _audioRecorder.isRecording();
+      if (isRecording) {
+        debugPrint('Voice: Already recording, stopping first');
+        await _audioRecorder.stop();
+      }
+      
       if (await _audioRecorder.hasPermission()) {
         final dir = await getTemporaryDirectory();
         _currentRecordingPath = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
         
+        debugPrint('Voice: Starting recording to $_currentRecordingPath');
         await _audioRecorder.start(const RecordConfig(), path: _currentRecordingPath!);
         if (mounted) setState(() => _isListening = true);
+        debugPrint('Voice: Recording started');
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -77,16 +89,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
           SnackBar(content: Text('Recording error: $e')),
         );
       }
+      // Reset state on error
+      if (mounted) setState(() => _isListening = false);
     } finally {
       _isRecordingLocked = false;
     }
   }
 
   Future<void> _stopRecording() async {
-    if (!_isListening) return; // Only stop if actually listening
+    if (!_isListening) {
+      debugPrint('Voice: Not listening, nothing to stop');
+      return;
+    }
+    
+    debugPrint('Voice: Stopping recording');
     
     try {
       final path = await _audioRecorder.stop();
+      debugPrint('Voice: Recording stopped, path: $path');
+      
       if (mounted) {
         setState(() {
           _isListening = false;
@@ -102,7 +123,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     } catch (e) {
       debugPrint("Error stopping record: $e");
     } finally {
-      if (mounted) setState(() => _isProcessingAudio = false);
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _isProcessingAudio = false;
+        });
+      }
     }
   }
   
