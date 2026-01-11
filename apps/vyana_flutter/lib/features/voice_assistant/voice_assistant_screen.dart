@@ -207,14 +207,26 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
       // Use the chat provider to get AI response
       final chatNotifier = ref.read(chatProvider.notifier);
       
-      // Send message and wait for response
+      // Send message (starts async streaming)
       await chatNotifier.sendMessage(text);
+      
+      // Wait for streaming to complete (isLoading becomes false)
+      // Poll the state until loading is finished
+      int maxWaitSeconds = 60;
+      int waited = 0;
+      while (ref.read(chatProvider).isLoading && waited < maxWaitSeconds) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        waited++;
+      }
+      
+      // Add small delay to ensure state is fully updated
+      await Future.delayed(const Duration(milliseconds: 100));
       
       // Get the last assistant message
       final messages = ref.read(chatProvider).messages;
       if (messages.isNotEmpty) {
         final lastMessage = messages.last;
-        if (lastMessage.role != 'user') {
+        if (lastMessage.role != 'user' && lastMessage.content.isNotEmpty) {
           return lastMessage.content;
         }
       }

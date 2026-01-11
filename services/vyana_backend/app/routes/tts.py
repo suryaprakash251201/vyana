@@ -33,10 +33,10 @@ async def synthesize_speech(request: TTSRequest):
         
         client = Groq(api_key=api_key)
         
-        # Use Groq's TTS API (OpenAI-compatible endpoint)
+        # Use Groq's TTS API with Canopylabs Orpheus model
         response = client.audio.speech.create(
-            model="playback-tts-v1",  # Groq's Playback TTS model
-            voice=request.voice if request.voice in AVAILABLE_VOICES else "orpheus",
+            model="playai-tts",  # Groq's PlayAI TTS model (or use "canopylabs/orpheus-v1-english")
+            voice=request.voice if request.voice in AVAILABLE_VOICES else "Arista-PlayAI",
             input=request.text,
             response_format="mp3"
         )
