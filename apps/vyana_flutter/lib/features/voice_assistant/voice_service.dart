@@ -21,7 +21,7 @@ class VoiceService {
   }
   
   /// Synthesize text to speech and play it
-  Future<void> speak(String text, {String voice = 'Arista-PlayAI', VoidCallback? onComplete}) async {
+  Future<void> speak(String text, {String voice = 'arista', VoidCallback? onComplete}) async {
     if (text.isEmpty) {
       onComplete?.call();
       return;

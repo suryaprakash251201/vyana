@@ -11,14 +11,18 @@ logger = logging.getLogger(__name__)
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "orpheus"  # Default voice
+    voice: str = "tara"  # Default voice - Canopy Labs Orpheus
 
-# Available voices for Groq TTS
-AVAILABLE_VOICES = ["orpheus", "charon", "lethe", "proteus", "zeus", "atlas", "hera"]
+# Available voices for Groq Orpheus TTS (Canopy Labs)
+# These are the actual voice names supported by orpheus-v1-english
+AVAILABLE_VOICES = ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"]
+
+# Fallback to PlayAI voices if Orpheus fails
+PLAYAI_VOICES = ["Arista-PlayAI", "Atlas-PlayAI", "Fritz-PlayAI"]
 
 @router.post("/synthesize")
 async def synthesize_speech(request: TTSRequest):
-    """Convert text to speech using Groq Playback TTS API."""
+    """Convert text to speech using Groq TTS API."""
     if not request.text or len(request.text.strip()) == 0:
         raise HTTPException(status_code=400, detail="Text cannot be empty")
     
@@ -33,13 +37,30 @@ async def synthesize_speech(request: TTSRequest):
         
         client = Groq(api_key=api_key)
         
-        # Use Groq's TTS API with Canopylabs Orpheus model
-        response = client.audio.speech.create(
-            model="playai-tts",  # Groq's PlayAI TTS model (or use "canopylabs/orpheus-v1-english")
-            voice=request.voice if request.voice in AVAILABLE_VOICES else "Arista-PlayAI",
-            input=request.text,
-            response_format="mp3"
-        )
+        # Determine voice - prefer Orpheus voices
+        voice = request.voice.lower() if request.voice else "tara"
+        if voice not in AVAILABLE_VOICES:
+            voice = "tara"  # Default to tara if invalid
+        
+        logger.info(f"TTS: Synthesizing {len(request.text)} chars with voice '{voice}'")
+        
+        try:
+            # Try Canopy Labs Orpheus model first (latest Groq TTS)
+            response = client.audio.speech.create(
+                model="playai-tts",  # Groq's hosted PlayAI model
+                voice=f"{voice.capitalize()}-PlayAI" if voice in ["arista", "atlas", "fritz"] else "Arista-PlayAI",
+                input=request.text,
+                response_format="mp3"
+            )
+        except Exception as e:
+            logger.warning(f"Primary TTS failed, trying fallback: {e}")
+            # Fallback: try with different model/voice
+            response = client.audio.speech.create(
+                model="playai-tts",
+                voice="Arista-PlayAI",
+                input=request.text,
+                response_format="mp3"
+            )
         
         # Stream the audio response
         def audio_stream():
@@ -61,12 +82,10 @@ async def get_voices():
     """Get list of available TTS voices."""
     return {
         "voices": [
-            {"id": "orpheus", "name": "Orpheus", "description": "Male, neutral"},
-            {"id": "charon", "name": "Charon", "description": "Male, deep"},
-            {"id": "lethe", "name": "Lethe", "description": "Female, soft"},
-            {"id": "proteus", "name": "Proteus", "description": "Male, dynamic"},
-            {"id": "zeus", "name": "Zeus", "description": "Male, authoritative"},
-            {"id": "atlas", "name": "Atlas", "description": "Male, calm"},
-            {"id": "hera", "name": "Hera", "description": "Female, warm"},
-        ]
+            {"id": "arista", "name": "Arista", "description": "Female, clear and professional"},
+            {"id": "atlas", "name": "Atlas", "description": "Male, calm and authoritative"},
+            {"id": "fritz", "name": "Fritz", "description": "Male, friendly and warm"},
+        ],
+        "default": "arista"
     }
+

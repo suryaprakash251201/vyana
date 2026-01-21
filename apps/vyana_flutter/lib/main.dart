@@ -19,6 +19,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:vyana_flutter/core/sound_service.dart';
+import 'package:vyana_flutter/core/env_config.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -28,8 +29,8 @@ void main() async {
 
   try {
     await Supabase.initialize(
-      url: 'https://bqqdjkfgkwugqssvowxi.supabase.co',
-      anonKey: 'sb_publishable_yonEFuXyx5D4oJLkoS_ing_BSgQIDtO',
+      url: EnvConfig.supabaseUrl,
+      anonKey: EnvConfig.supabaseAnonKey,
     );
   } catch (e) {
     debugPrint("Supabase init error: $e");

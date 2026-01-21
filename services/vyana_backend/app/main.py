@@ -8,7 +8,7 @@ app = FastAPI(title="Vyana Backend", version="0.1.0")
 # CORS for Flutter web/emulator
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,7 +30,7 @@ app.include_router(mcp.router)  # MCP client routes (prefix defined in router)
 # This exposes Vyana's tools via Model Context Protocol
 try:
     from app.mcp.server import mcp_server
-    app.mount("/mcp-server", mcp_server.sse_app())
+    app.mount("/mcp-server", mcp_server.http_app())
 except Exception as e:
     import logging
     logging.getLogger(__name__).warning(f"FastMCP server not mounted: {e}")
