@@ -12,6 +12,15 @@ import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/features/chat/chat_provider.dart';
 import 'package:vyana_flutter/features/voice_assistant/voice_service.dart';
 
+// Create a local model for session history
+class SessionMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+
+  SessionMessage({required this.text, required this.isUser, required this.timestamp});
+}
+
 class VoiceAssistantScreen extends ConsumerStatefulWidget {
   const VoiceAssistantScreen({super.key});
 
@@ -29,11 +38,14 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
   
   VoiceAssistantState _state = VoiceAssistantState.idle;
   String _statusText = "Tap to speak";
-  String _transcribedText = "";
-  String _responseText = "";
   String? _currentRecordingPath;
   bool _isRecordingLocked = false;
   bool _continuousMode = true; // Auto-listen after speaking
+  
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final List<SessionMessage> _sessionMessages = [];
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -96,8 +108,7 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
         await _audioRecorder.start(const RecordConfig(), path: _currentRecordingPath!);
         _setState(VoiceAssistantState.listening);
         setState(() {
-          _transcribedText = "";
-          _responseText = "";
+          // Reset transcription logic if needed, but we use history now
         });
       }
     } catch (e) {
@@ -144,7 +155,14 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
         return;
       }
       
-      setState(() => _transcribedText = text);
+      setState(() {
+        _sessionMessages.add(SessionMessage(
+          text: text, 
+          isUser: true, 
+          timestamp: DateTime.now()
+        ));
+      });
+      _scrollToBottom();
       
       // Step 2: Send to AI and get response
       final response = await _getAIResponse(text);
@@ -153,7 +171,14 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
         return;
       }
       
-      setState(() => _responseText = response);
+      setState(() {
+        _sessionMessages.add(SessionMessage(
+          text: response, 
+          isUser: false, 
+          timestamp: DateTime.now()
+        ));
+      });
+      _scrollToBottom();
       
       // Step 3: Speak the response
       _setState(VoiceAssistantState.speaking);
@@ -248,11 +273,66 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
     }
   }
 
+  void _handleTextSubmit(String text) async {
+    if (text.trim().isEmpty) return;
+    
+    _textController.clear();
+    setState(() {
+      _sessionMessages.add(SessionMessage(
+        text: text, 
+        isUser: true, 
+        timestamp: DateTime.now()
+      ));
+      _state = VoiceAssistantState.processing;
+    });
+    _scrollToBottom();
+    
+    // Get AI response
+    final response = await _getAIResponse(text);
+    if (response == null || response.isEmpty) {
+      _setState(VoiceAssistantState.idle);
+      return;
+    }
+    
+    setState(() {
+      _sessionMessages.add(SessionMessage(
+        text: response, 
+        isUser: false, 
+        timestamp: DateTime.now()
+      ));
+      _state = VoiceAssistantState.speaking;
+    });
+    _scrollToBottom();
+    
+    // Speak response
+    final voiceService = ref.read(voiceServiceProvider);
+    await voiceService.speak(response, onComplete: () {
+      if (mounted) {
+        _setState(VoiceAssistantState.idle);
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
     _waveController.dispose();
     _audioRecorder.dispose();
+    _textController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -346,99 +426,175 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
                       ),
                     ),
                     
-                    const Gap(32),
+              // Main content
+              Expanded(
+                child: Column(
+                  children: [
+                    // Conversation History
+                    Expanded(
+                      child: _sessionMessages.isEmpty 
+                        ? Center(
+                            child: Text(
+                              'Start talking or typing...',
+                              style: TextStyle(color: Colors.grey.shade400),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                            itemCount: _sessionMessages.length,
+                            itemBuilder: (context, index) {
+                              final msg = _sessionMessages[index];
+                              final isUser = msg.isUser;
+                              return Align(
+                                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isUser 
+                                        ? AppColors.primaryPurple.withOpacity(0.1) 
+                                        : theme.colorScheme.surface,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: const Radius.circular(20),
+                                      topRight: const Radius.circular(20),
+                                      bottomLeft: Radius.circular(isUser ? 20 : 4),
+                                      bottomRight: Radius.circular(isUser ? 4 : 20),
+                                    ),
+                                    border: Border.all(
+                                      color: isUser 
+                                          ? AppColors.primaryPurple.withOpacity(0.2)
+                                          : Colors.grey.withOpacity(0.1),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        msg.text,
+                                        style: theme.textTheme.bodyLarge?.copyWith(
+                                          color: isUser ? theme.textTheme.bodyLarge?.color : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                    ),
                     
-                    // Status text
-                    Text(
-                      _statusText,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: _getOrbColor(),
-                        fontWeight: FontWeight.w600,
+                    // Orb and Status (condensed when keyboard is open)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: MediaQuery.of(context).viewInsets.bottom > 0 ? 100 : 250,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (MediaQuery.of(context).viewInsets.bottom == 0) ...[
+                            GestureDetector(
+                              onTap: _toggleListening,
+                              child: AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: _state == VoiceAssistantState.listening 
+                                        ? _pulseAnimation.value 
+                                        : 1.0,
+                                    child: Container(
+                                      width: 120,
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: _getOrbGradient(),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _getOrbColor().withOpacity(0.4),
+                                            blurRadius: 40,
+                                            spreadRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: _buildOrbIcon(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const Gap(24),
+                            Text(
+                              _statusText,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: _getOrbColor(),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ] else ...[
+                            // Mini Orb when typing
+                             GestureDetector(
+                               onTap: _toggleListening,
+                               child: Container(
+                                 padding: const EdgeInsets.all(12),
+                                 decoration: BoxDecoration(
+                                   shape: BoxShape.circle,
+                                   gradient: _getOrbGradient(),
+                                 ),
+                                 child: const Icon(Icons.mic, color: Colors.white, size: 24),
+                               ),
+                             ),
+                             const Gap(8),
+                             Text(_statusText, style: TextStyle(color: _getOrbColor(), fontSize: 12)),
+                          ],
+                        ],
                       ),
                     ),
                     
-                    const Gap(24),
-                    
-                    // Transcribed text
-                    if (_transcribedText.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.mic, size: 16, color: Colors.grey.shade600),
-                                  const Gap(8),
-                                  Text('You said:', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                                ],
-                              ),
-                              const Gap(8),
-                              Text(_transcribedText, style: theme.textTheme.bodyMedium),
-                            ],
-                          ),
-                        ),
+                    // Input Area
+                    Container(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+                      decoration: BoxDecoration(
+                        color: theme.scaffoldBackgroundColor,
+                        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
                       ),
-                    
-                    if (_responseText.isNotEmpty && _transcribedText.isNotEmpty) const Gap(16),
-                    
-                    // Response text
-                    if (_responseText.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primaryPurple.withOpacity(0.1),
-                                AppColors.accentPink.withOpacity(0.1),
-                              ],
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _textController,
+                              focusNode: _focusNode,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message...',
+                                filled: true,
+                                fillColor: theme.colorScheme.surface,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              ),
+                              onSubmitted: _handleTextSubmit,
+                              textInputAction: TextInputAction.send,
                             ),
-                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.auto_awesome, size: 16, color: AppColors.primaryPurple),
-                                  const Gap(8),
-                                  Text('Vyana:', style: TextStyle(color: AppColors.primaryPurple, fontSize: 12, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                              const Gap(8),
-                              Text(
-                                _responseText.length > 200 ? '${_responseText.substring(0, 200)}...' : _responseText,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ],
+                          const Gap(8),
+                          IconButton(
+                            onPressed: () => _handleTextSubmit(_textController.text),
+                            icon: const Icon(Icons.send_rounded),
+                            color: AppColors.primaryPurple,
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.primaryPurple.withOpacity(0.1),
+                              padding: const EdgeInsets.all(12),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               ),
-              
-              // Bottom hint
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _state == VoiceAssistantState.idle 
-                      ? 'Tap the orb to start speaking'
-                      : _state == VoiceAssistantState.listening
-                          ? 'Tap again to stop'
-                          : '',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                ),
-              ),
+
             ],
           ),
         ),

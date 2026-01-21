@@ -24,7 +24,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
   final ScrollController _scrollController = ScrollController();
   late AnimationController _pulseController;
   
-  final AudioRecorder _audioRecorder = AudioRecorder();
+  AudioRecorder? _audioRecorder;
   bool _isListening = false;
   bool _isProcessingAudio = false;
   String? _currentRecordingPath;
@@ -43,7 +43,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
   }
   
   Future<void> _checkMicPermission() async {
-    final hasPermission = await _audioRecorder.hasPermission();
+    final recorder = AudioRecorder();
+    final hasPermission = await recorder.hasPermission();
+    recorder.dispose();
+    
     if (!hasPermission && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Microphone permission is required for voice input')),
@@ -60,19 +63,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     _isRecordingLocked = true;
     
     try {
+      // Initialize a fresh recorder
+      _audioRecorder?.dispose();
+      _audioRecorder = AudioRecorder();
+      
       // Check if recorder is in a valid state
-      final isRecording = await _audioRecorder.isRecording();
+      final isRecording = await _audioRecorder!.isRecording();
       if (isRecording) {
         debugPrint('Voice: Already recording, stopping first');
-        await _audioRecorder.stop();
+        await _audioRecorder!.stop();
       }
       
-      if (await _audioRecorder.hasPermission()) {
+      if (await _audioRecorder!.hasPermission()) {
         final dir = await getTemporaryDirectory();
         _currentRecordingPath = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
         
         debugPrint('Voice: Starting recording to $_currentRecordingPath');
-        await _audioRecorder.start(const RecordConfig(), path: _currentRecordingPath!);
+        await _audioRecorder!.start(const RecordConfig(), path: _currentRecordingPath!);
         if (mounted) setState(() => _isListening = true);
         debugPrint('Voice: Recording started');
       } else {
@@ -91,6 +98,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
       }
       // Reset state on error
       if (mounted) setState(() => _isListening = false);
+      _audioRecorder?.dispose();
+      _audioRecorder = null;
     } finally {
       _isRecordingLocked = false;
     }
@@ -105,7 +114,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     debugPrint('Voice: Stopping recording');
     
     try {
-      final path = await _audioRecorder.stop();
+      final path = await _audioRecorder?.stop();
       debugPrint('Voice: Recording stopped, path: $path');
       
       if (mounted) {
@@ -123,6 +132,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     } catch (e) {
       debugPrint("Error stopping record: $e");
     } finally {
+      _audioRecorder?.dispose();
+      _audioRecorder = null;
+      
       if (mounted) {
         setState(() {
           _isListening = false;
@@ -197,7 +209,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SingleTickerProvid
     _pulseController.dispose();
     _controller.dispose();
     _scrollController.dispose();
-    _audioRecorder.dispose();
+    _audioRecorder?.dispose();
     super.dispose();
   }
 
