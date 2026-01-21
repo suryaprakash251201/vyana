@@ -389,43 +389,6 @@ class _VoiceAssistantScreenState extends ConsumerState<VoiceAssistantScreen>
               ),
               
               // Main content
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Animated Orb
-                    GestureDetector(
-                      onTap: _toggleListening,
-                      child: AnimatedBuilder(
-                        animation: _pulseAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _state == VoiceAssistantState.listening 
-                                ? _pulseAnimation.value 
-                                : 1.0,
-                            child: Container(
-                              width: 180,
-                              height: 180,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: _getOrbGradient(),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _getOrbColor().withOpacity(0.4),
-                                    blurRadius: 40,
-                                    spreadRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: _buildOrbIcon(),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    
               // Main content
               Expanded(
                 child: Column(
