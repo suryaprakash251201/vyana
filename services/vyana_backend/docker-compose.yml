@@ -4,10 +4,12 @@ services:
     container_name: vyana-backend
     restart: always
     ports:
-      - "8080:8080"
+      - "8000:8000"
     env_file:
       - .env
     environment:
+      - PORT=8000
+      - HOST=0.0.0.0
       - DATA_DIR=/app/data
       # MCP Configuration (optional - can also be in .env)
       # - ZERODHA_API_KEY=${ZERODHA_API_KEY}
@@ -18,7 +20,7 @@ services:
       - ./data:/app/data
       - ./vyana.db:/app/vyana.db # Persist SQLite database
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
