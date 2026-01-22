@@ -11,12 +11,7 @@ services:
       - ./services/vyana_backend/.env
     volumes:
       - ./services/vyana_backend/data:/app/data
-      - ./services/vyana_backend/vyana.db:/app/vyana.db
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      # - ./services/vyana_backend/vyana.db:/app/vyana.db # Commented out to avoid mount issues during debug
 
   # React Dashboard Service
   dashboard:
@@ -27,5 +22,5 @@ services:
     ports:
       - "9488:80" # Exposed on port 9488 as requested
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
+
