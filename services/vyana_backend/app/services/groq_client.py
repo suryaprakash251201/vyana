@@ -494,22 +494,47 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                         if not match:
                             match = re.search(r"<function=(\w+)>\s*(\{.+)", error_str)
                         
-                        if match:
+                        # Pattern 4: <function=name> </function> or <function=name></function> (empty args)
+                        if not match:
+                            match = re.search(r"<function=(\w+)>\s*</function>", error_str)
+                            if match:
+                                fn_name = match.group(1)
+                                fn_args = "{}"  # Empty args
+                                logger.info(f"Rescuing tool call with empty args: {fn_name}")
+                                fn_result = self._execute_function(fn_name, fn_args)
+                                rescue_result = f"I have executed the request. Result: {fn_result}"
+                        
+                        # Pattern 5: <function=name> (just function name, no closing tag)
+                        if not match and not rescue_result:
+                            match = re.search(r"<function=(\w+)>(?:\s*)(?!</function>)", error_str)
+                            if match:
+                                fn_name = match.group(1)
+                                fn_args = "{}"  # Empty args
+                                logger.info(f"Rescuing tool call (no closing tag): {fn_name}")
+                                fn_result = self._execute_function(fn_name, fn_args)
+                                rescue_result = f"I have executed the request. Result: {fn_result}"
+                        
+                        if match and not rescue_result:
                             fn_name = match.group(1)
-                            fn_args = match.group(2)
+                            fn_args = match.group(2) if len(match.groups()) > 1 else "{}"
                             
                             # Clean up the JSON string
                             # Remove trailing characters that aren't part of JSON
                             fn_args = fn_args.strip()
+                            
+                            # Handle empty or whitespace-only args
+                            if not fn_args or fn_args.isspace():
+                                fn_args = "{}"
                             
                             # Remove trailing quote/brace if they're escape artifacts
                             while fn_args and fn_args[-1] in ["'", "\\", " "]:
                                 fn_args = fn_args[:-1]
                             
                             # Ensure JSON is complete (has closing brace)
-                            open_braces = fn_args.count('{') - fn_args.count('}')
-                            if open_braces > 0:
-                                fn_args = fn_args + '}' * open_braces
+                            if fn_args.startswith("{"):
+                                open_braces = fn_args.count('{') - fn_args.count('}')
+                                if open_braces > 0:
+                                    fn_args = fn_args + '}' * open_braces
                             
                             # Replace single quotes with double quotes if needed
                             if "'" in fn_args and '"' not in fn_args:
@@ -520,6 +545,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                             # Execute
                             fn_result = self._execute_function(fn_name, fn_args)
                             rescue_result = f"I have executed the request. Result: {fn_result}"
+                            
                     except json.JSONDecodeError as je:
                         logger.error(f"Rescue JSON parse failed: {je}")
                         rescue_result = "I tried to execute that action but encountered a formatting issue. Please try rephrasing your request."

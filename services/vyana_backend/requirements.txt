@@ -29,6 +29,7 @@ sse-starlette>=1.6.0,<2.0.0
 
 # Utilities
 python-dateutil>=2.8.0,<3.0.0
+tzdata>=2024.1  # Required for timezone support on Windows
 
 # Testing
 pytest>=7.0.0,<8.0.0

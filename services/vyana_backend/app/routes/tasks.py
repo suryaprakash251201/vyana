@@ -26,3 +26,25 @@ def complete_task(req: CompleteTaskRequest):
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"status": "success", "task_id": req.task_id}
+
+class UpdateTaskRequest(BaseModel):
+    task_id: int
+    title: Optional[str] = None
+    due_date: Optional[str] = None
+
+class DeleteTaskRequest(BaseModel):
+    task_id: int
+
+@router.post("/update")
+def update_task(req: UpdateTaskRequest):
+    success = tasks_repo.update_task(req.task_id, title=req.title, due_date=req.due_date)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found or no changes made")
+    return {"status": "success", "task_id": req.task_id}
+
+@router.post("/delete")
+def delete_task(req: DeleteTaskRequest):
+    success = tasks_repo.delete_task(req.task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"status": "success", "task_id": req.task_id}

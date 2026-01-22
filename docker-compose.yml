@@ -1,0 +1,31 @@
+services:
+  # Python Backend Service
+  backend:
+    build: 
+      context: ./services/vyana_backend
+    container_name: vyana-backend
+    restart: always
+    ports:
+      - "8000:8080" # Mapped to 8000 to match Dashboard default configuration
+    env_file:
+      - ./services/vyana_backend/.env
+    volumes:
+      - ./services/vyana_backend/data:/app/data
+      - ./services/vyana_backend/vyana.db:/app/vyana.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Dashboard Service
+  dashboard:
+    build: 
+      context: ./apps/vyana_dashboard
+    container_name: vyana-dashboard
+    restart: always
+    ports:
+      - "9488:80" # Exposed on port 9488 as requested
+    depends_on:
+      backend:
+        condition: service_healthy

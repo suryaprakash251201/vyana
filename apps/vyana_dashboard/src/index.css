@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--accent-color, #8b5cf6);
+  --color-primary-dark: #7c3aed;
+  --color-secondary: #ec4899;
+
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-surface-active: #e2e8f0;
+
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-light: #94a3b8;
+
+  --color-border: #e2e8f0;
+
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Theme CSS Variables */
+  --accent-color: #8b5cf6;
+  --accent-rgb: 139, 92, 246;
+
+  /* Light mode colors */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --input-bg: #f8fafc;
+
+  color-scheme: light;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Dark mode */
+.dark {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --card-bg: #1e293b;
+  --sidebar-bg: #1e293b;
+  --input-bg: #334155;
+
+  color-scheme: dark;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Apply dark mode to common elements */
+.dark .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.dark .bg-\[#f8fafc\] {
+  background-color: var(--bg-primary) !important;
+}
+
+.dark .text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-slate-700 {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+.dark .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+.dark .border-slate-100 {
+  border-color: var(--border-color) !important;
+}
+
+.dark .border-slate-200 {
+  border-color: var(--border-color) !important;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Card backgrounds in dark mode */
+.dark [class*="rounded-2xl"][class*="bg-white"],
+.dark [class*="rounded-xl"][class*="bg-white"] {
+  background-color: var(--card-bg) !important;
+}
+
+/* Input fields in dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Accent color utilities */
+.accent-gradient {
+  background: linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 80%, #4f46e5));
+}
+
+.accent-bg {
+  background-color: var(--accent-color);
+}
+
+.accent-text {
+  color: var(--accent-color);
+}
+
+.accent-border {
+  border-color: var(--accent-color);
+}
+
+/* Override violet colors with accent */
+.bg-violet-600,
+.from-violet-600 {
+  background-color: var(--accent-color) !important;
+}
+
+.text-violet-600,
+.text-violet-700 {
+  color: var(--accent-color) !important;
+}
+
+.bg-violet-50 {
+  background-color: rgba(var(--accent-rgb), 0.1) !important;
+}
+
+.bg-violet-100 {
+  background-color: rgba(var(--accent-rgb), 0.15) !important;
+}
+
+.shadow-violet-200,
+.shadow-violet-300 {
+  --tw-shadow-color: rgba(var(--accent-rgb), 0.3);
+}
+
+/* Gradient buttons with accent */
+.dark .from-violet-600 {
+  --tw-gradient-from: var(--accent-color) !important;
+}
+
+.dark .to-indigo-600 {
+  --tw-gradient-to: color-mix(in srgb, var(--accent-color) 70%, #4f46e5) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
