@@ -35,7 +35,7 @@ services:
     container_name: vyana-dashboard
     restart: always
     ports:
-      - "80:80"
+      - "9488:80"
     depends_on:
       vyana-backend:
         condition: service_healthy
