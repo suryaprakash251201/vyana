@@ -12,26 +12,26 @@ const api = axios.create({
 
 // Health check
 export const getHealth = async () => {
-    const response = await api.get('/health');
+    const response = await api.get('health');
     return response.data;
 };
 
 // Backend info
 export const getBackendInfo = async () => {
-    const response = await api.get('/');
+    const response = await api.get('');
     return response.data;
 };
 
 // Tasks
 export const getTasks = async (includeCompleted = false) => {
-    const response = await api.get('/tasks/list', {
+    const response = await api.get('tasks/list', {
         params: { include_completed: includeCompleted }
     });
     return response.data;
 };
 
 export const createTask = async (title, dueDate = null) => {
-    const response = await api.post('/tasks/create', {
+    const response = await api.post('tasks/create', {
         title,
         due_date: dueDate
     });
@@ -39,7 +39,7 @@ export const createTask = async (title, dueDate = null) => {
 };
 
 export const completeTask = async (taskId) => {
-    const response = await api.post('/tasks/complete', {
+    const response = await api.post('tasks/complete', {
         task_id: taskId
     });
     return response.data;
@@ -47,19 +47,19 @@ export const completeTask = async (taskId) => {
 
 // Calendar
 export const getCalendarEvents = async (startDate = null, endDate = null) => {
-    const response = await api.get('/calendar/events', {
+    const response = await api.get('calendar/events', {
         params: { start: startDate, end: endDate }
     });
     return response.data;
 };
 
 export const getTodayEvents = async () => {
-    const response = await api.get('/calendar/today');
+    const response = await api.get('calendar/today');
     return response.data;
 };
 
 export const createCalendarEvent = async (summary, startTime, durationMinutes = 60, description = null) => {
-    const response = await api.post('/calendar/create', {
+    const response = await api.post('calendar/create', {
         summary,
         start_time: startTime,
         duration_minutes: durationMinutes,
@@ -70,18 +70,18 @@ export const createCalendarEvent = async (summary, startTime, durationMinutes = 
 
 // Gmail
 export const getUnreadEmails = async () => {
-    const response = await api.get('/gmail/unread');
+    const response = await api.get('gmail/unread');
     return response.data;
 };
 
 // Tools
 export const getAvailableTools = async () => {
-    const response = await api.get('/tools/list');
+    const response = await api.get('tools/list');
     return response.data;
 };
 
 export const toggleTool = async (toolName, enabled) => {
-    const response = await api.post('/tools/toggle', {
+    const response = await api.post('tools/toggle', {
         tool_name: toolName,
         enabled
     });
@@ -90,7 +90,7 @@ export const toggleTool = async (toolName, enabled) => {
 
 // Chat
 export const sendChatMessage = async (message, conversationId = null, toolsEnabled = true) => {
-    const response = await api.post('/chat/send', {
+    const response = await api.post('chat/send', {
         message,
         conversation_id: conversationId,
         tools_enabled: toolsEnabled

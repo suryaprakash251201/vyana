@@ -32,8 +32,8 @@ services:
       context: ./apps/vyana_dashboard
       dockerfile: Dockerfile
       args:
-        # Use the direct backend IP since domain proxy isn't configured
-        - VITE_API_URL=http://103.194.228.99:8000
+        # Use relative path /api/ for production proxying
+        - VITE_API_URL=/api/
     container_name: vyana-dashboard
     restart: always
     ports:
