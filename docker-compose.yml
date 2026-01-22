@@ -14,7 +14,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
-      - CORS_ORIGINS=https://vyanadash.suryaprakashinfo.in,https://vyana.suryaprakashinfo.in,http://localhost:3000,http://localhost:9488
+      - CORS_ORIGINS=https://vyanadash.suryaprakashinfo.in,http://103.194.228.99:8000,http://103.194.228.99:9488,http://localhost:3000,http://localhost:9488,*
     volumes:
       - ./services/vyana_backend/data:/app/data
       - ./services/vyana_backend/vyana.db:/app/vyana.db
@@ -32,8 +32,8 @@ services:
       context: ./apps/vyana_dashboard
       dockerfile: Dockerfile
       args:
-        # Use the production backend URL for browser access
-        - VITE_API_URL=https://vyana.suryaprakashinfo.in
+        # Use the direct backend IP since domain proxy isn't configured
+        - VITE_API_URL=http://103.194.228.99:8000
     container_name: vyana-dashboard
     restart: always
     ports:
