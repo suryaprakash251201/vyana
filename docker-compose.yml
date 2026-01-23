@@ -34,10 +34,12 @@ services:
       args:
         # Use relative path /api/ for production proxying
         - VITE_API_URL=/api
+    environment:
+      - VITE_API_URL=/api
     container_name: vyana-dashboard
     restart: always
     ports:
-      - "9488:80"
+      - "9488:9488"
     depends_on:
       vyana-backend:
         condition: service_healthy

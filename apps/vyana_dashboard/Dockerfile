@@ -1,5 +1,4 @@
-# Stage 1: Build
-FROM node:20-alpine as builder
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -12,22 +11,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build args
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
+# Expose the requested port
+EXPOSE 9488
 
-# Build the app
-RUN npm run build
-
-# Stage 2: Serve
-FROM nginx:alpine
-
-# Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Start Vite dev server on port 9488
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "9488"]
