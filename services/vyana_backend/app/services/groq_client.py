@@ -632,3 +632,117 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         except Exception as e:
             logger.error(f"Error in Groq stream: {e}")
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    async def chat_sync(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None, mcp_enabled: bool = True) -> str:
+        """
+        Non-streaming version of chat for legacy/simple clients.
+        Returns the full response string.
+        """
+        # Use user provided model or default to llama-3.1-8b-instant
+        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name) else self.model_name
+        
+        # Get current date/time for context in IST
+        from datetime import datetime
+        try:
+            from zoneinfo import ZoneInfo
+            ist = ZoneInfo("Asia/Kolkata")
+        except ImportError:
+            import pytz
+            ist = pytz.timezone("Asia/Kolkata")
+            
+        now = datetime.now(ist)
+        current_datetime = now.strftime("%Y-%m-%d %H:%M")
+        current_date = now.strftime("%Y-%m-%d")
+        day_of_week = now.strftime("%A")
+        
+        # Build system prompt with context
+        system_content = f"""You are Vyana, a cheerful, intelligent, and highly capable personal assistant with a friendly, feminine persona. You are here to help the user with their daily life, work, and productivity in a warm and engaging way.
+
+Current Date: {current_date} ({day_of_week})
+Current Time: {current_datetime} (IST - Indian Standard Time)
+
+Time & Scheduling Instructions:
+- Internalize that the current timezone is Indian Standard Time (IST, UTC+5:30).
+- When the user mentions relative times like 'today', 'tomorrow', 'at 4pm', always convert them to the ISO 8601 format (YYYY-MM-DDTHH:MM:SS) based on the current IST time provided above.
+- Example: If today is 2026-01-05 and user says '4pm today', use 2026-01-05T16:00:00.
+
+Interaction Style:
+- Persona: Act like a supportive, smart, and friendly personal assistant (like 'JARVIS' but with a warm, feminine touch). Be proactive and helpful.
+- Tone: Conversational, clear, positive, and professional but not stiff.
+- Using Llama 3.1 8B, optimize your responses for clarity and helpfulness.
+
+Tool Usage & Data Presentation:
+- **MAXIMIZE TOOL USAGE**: You have access to powerful tools including Calendar, Email, Tasks, and external MCP tools (like Stock Market access).
+- **ALWAYS CHECK TOOLS**: If a user's request *might* be solved or enhanced by a tool, USE IT. Do not guess or hallucinate data.
+- **MCP Tools**: You have access to Model Context Protocol (MCP) tools. Use them extensively when relevant.
+- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
+- **Formatting**: Present financial or list data in clean markdown tables or bullet points.
+
+If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
+        
+        # Add custom instructions if provided
+        if custom_instructions:
+            system_content += f"\n\nUser's personal instructions: {custom_instructions}"
+        
+        # Convert messages to Groq format
+        groq_messages = []
+        if memory_enabled:
+            groq_messages.append({"role": "system", "content": system_content})
+            for m in messages[:-1]:
+                groq_messages.append({"role": m.role if m.role != "model" else "assistant", "content": m.content})
+        else:
+            groq_messages.append({"role": "system", "content": system_content})
+        
+        # Add current user message
+        groq_messages.append({"role": "user", "content": messages[-1].content})
+
+        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else None
+        
+        try:
+            # Attempt 1: With Tools
+            completion = self.client.chat.completions.create(
+                model=model,
+                messages=groq_messages,
+                tools=tools,
+                tool_choice="auto" if tools else "none",
+                stream=False 
+            )
+
+            response_message = completion.choices[0].message
+            tool_calls = response_message.tool_calls
+
+            if tool_calls:
+                # Append assistant message with tool calls
+                groq_messages.append(response_message)
+
+                # Execute tools and collect results
+                tool_results = []
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = tool_call.function.arguments
+                    logger.info(f"Tool call: {function_name} with args: {function_args}")
+                    function_response = self._execute_function(function_name, function_args)
+                    logger.info(f"Tool result: {function_response}")
+                    tool_results.append(function_response)
+                    
+                    groq_messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response,
+                    })
+                
+                # Second call: Get final response after tool execution
+                final_completion = self.client.chat.completions.create(
+                    model=model,
+                    messages=groq_messages,
+                    stream=False
+                )
+                return final_completion.choices[0].message.content or f"Done! {'; '.join(tool_results)}"
+
+            else:
+                return response_message.content or "I processed your request."
+
+        except Exception as e:
+            logger.error(f"Error in Groq chat_sync: {e}")
+            return f"Error: {str(e)}"
