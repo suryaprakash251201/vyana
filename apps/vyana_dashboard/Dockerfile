@@ -14,5 +14,5 @@ COPY . .
 # Expose the requested port
 EXPOSE 9488
 
-# Start Vite dev server (config handled in vite.config.ts)
-CMD ["npm", "run", "dev"]
+# Start Vite dev server on port 9488 with explicit host binding
+CMD ["npx", "vite", "--host", "0.0.0.0", "--port", "9488"]

@@ -12,18 +12,16 @@ export default defineConfig({
   },
   server: {
     port: 9488,
+    host: '0.0.0.0', // Listen on all addresses
     strictPort: true,
-    host: true,
-    allowedHosts: ['all', 'vyana.suryaprakashinfo.in', '103.194.228.99', 'localhost'],
+    allowedHosts: true, // Allow all hosts (new in Vite 5.1+)
     cors: true,
-    hmr: {
-      clientPort: 9488,
-    },
     proxy: {
       '/api': {
         target: 'http://vyana-backend:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
       },
     },
   },
