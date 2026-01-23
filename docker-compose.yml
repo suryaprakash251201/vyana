@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Use relative path /api/ for production proxying
-        - VITE_API_URL=/api/
+        - VITE_API_URL=/api
     container_name: vyana-dashboard
     restart: always
     ports:

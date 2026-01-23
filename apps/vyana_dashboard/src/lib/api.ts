@@ -1,4 +1,12 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vyana.suryaprakashinfo.in'
+const getBaseUrl = () => {
+    let url = import.meta.env.VITE_API_URL || 'https://vyana.suryaprakashinfo.in'
+    if (url.endsWith('/')) {
+        url = url.slice(0, -1)
+    }
+    return url
+}
+
+const API_BASE_URL = getBaseUrl()
 
 interface ApiResponse<T> {
     data?: T
