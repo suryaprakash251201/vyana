@@ -11,8 +11,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 9488,
+    strictPort: true,
     host: true,
+    allowedHosts: ['all', 'vyana.suryaprakashinfo.in', '103.194.228.99', 'localhost'],
+    cors: true,
+    hmr: {
+      clientPort: 9488,
+    },
     proxy: {
       '/api': {
         target: 'http://vyana-backend:8000',
