@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/mcp/mcp_provider.dart';
+import 'package:vyana_flutter/features/settings/settings_provider.dart';
 
 /// MCP Connections Screen
 /// Allows users to manage their MCP service connections (Zerodha, etc.)
@@ -115,6 +116,54 @@ class MCPScreen extends ConsumerWidget {
 
               const Gap(24),
 
+              // Enable Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: SwitchListTile(
+                    title: const Text("Enable MCP Tools"),
+                    subtitle: const Text("Allow access to external MCP services"),
+                    value: ref.watch(settingsProvider).asData?.value.mcpEnabled ?? false,
+                    onChanged: (val) => ref.read(settingsProvider.notifier).toggleMcp(val),
+                  ),
+                ),
+              ),
+              
+              const Gap(24),
+              
+              if (!(ref.watch(settingsProvider).asData?.value.mcpEnabled ?? false))
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.extension_off, size: 48, color: Colors.grey.shade400),
+                        const Gap(16),
+                        Text(
+                          'MCP Tools are disabled',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Enable them above to connect services',
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
               // Servers List
               Expanded(
                 child: serversAsync.when(

@@ -14,7 +14,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
-      - CORS_ORIGINS=https://vyanadash.suryaprakashinfo.in,http://103.194.228.99:8000,http://103.194.228.99:9488,http://localhost:3000,http://localhost:9488,*
+      - CORS_ORIGINS=http://103.194.228.99:8000,http://localhost:3000,*
     volumes:
       - ./services/vyana_backend/data:/app/data
       - ./services/vyana_backend/vyana.db:/app/vyana.db
@@ -23,26 +23,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - vyana-network
-
-  # Vyana Dashboard - React/Vite with Nginx
-  vyana-dashboard:
-    build:
-      context: ./apps/vyana_dashboard
-      dockerfile: Dockerfile
-      args:
-        # Use relative path /api/ for production proxying
-        - VITE_API_URL=/api
-    environment:
-      - VITE_API_URL=/api
-    container_name: vyana-dashboard
-    restart: always
-    ports:
-      - "9488:9488"
-    depends_on:
-      vyana-backend:
-        condition: service_healthy
     networks:
       - vyana-network
 
