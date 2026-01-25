@@ -337,14 +337,14 @@ class CalendarScreen extends ConsumerWidget {
         final colorId = event['color_id']?.toString() ?? '9';
         final eventColor = calendarColors[colorId] ?? AppColors.accentPink;
         
-        // Parse time
+        // Parse time (12-hour format)
         String timeStr = "";
         DateTime? eventDate;
         try {
           eventDate = DateTime.parse(start).toLocal();
           timeStr = isAllDay 
             ? "All day" 
-            : "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
+            : _formatTime12Hour(eventDate);
         } catch (_) {}
 
         return GestureDetector(
@@ -515,6 +515,15 @@ class CalendarScreen extends ConsumerWidget {
     return days[d-1];
   }
 
+  // Helper to format time in 12-hour format with AM/PM
+  String _formatTime12Hour(DateTime dt) {
+    final hour = dt.hour;
+    final minute = dt.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return "${hour12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period";
+  }
+
   Widget _buildEventItem(BuildContext context, dynamic event, ThemeData theme, WidgetRef ref) {
       final summary = event['summary'] ?? 'No Title';
       final start = event['start'] ?? '';
@@ -532,7 +541,7 @@ class CalendarScreen extends ConsumerWidget {
         eventDate = DateTime.parse(start).toLocal();
         timeStr = isAllDay 
           ? "All day" 
-          : "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
+          : _formatTime12Hour(eventDate);
       } catch (_) {}
 
       return GestureDetector(

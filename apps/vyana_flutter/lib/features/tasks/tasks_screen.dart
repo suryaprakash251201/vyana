@@ -76,7 +76,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'My Tasks',
+                          'Google Tasks',
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.primary,
@@ -270,34 +270,38 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   void _showAddTaskDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
+    final notesController = TextEditingController();
+    DateTime? selectedDueDate;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Container(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
             ),
             const Gap(20),
             Text(
@@ -313,6 +317,33 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 prefixIcon: Icon(Icons.edit_outlined, color: Colors.grey.shade400),
               ),
             ),
+            const Gap(12),
+            TextField(
+              controller: notesController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Notes (optional)',
+                prefixIcon: Icon(Icons.notes_outlined, color: Colors.grey.shade400),
+              ),
+            ),
+            const Gap(12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2030),
+                );
+                if (date != null) {
+                  setState(() => selectedDueDate = date);
+                }
+              },
+              icon: const Icon(Icons.calendar_today),
+              label: Text(selectedDueDate != null 
+                ? '${selectedDueDate!.year}-${selectedDueDate!.month.toString().padLeft(2, '0')}-${selectedDueDate!.day.toString().padLeft(2, '0')}' 
+                : 'Add due date'),
+            ),
             const Gap(20),
             Container(
               decoration: BoxDecoration(
@@ -325,7 +356,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   borderRadius: BorderRadius.circular(16),
                   onTap: () {
                     if (controller.text.isNotEmpty) {
-                      ref.read(tasksProvider.notifier).createTask(controller.text);
+                      String? dueDateStr;
+                      if (selectedDueDate != null) {
+                        dueDateStr = '${selectedDueDate!.year}-${selectedDueDate!.month.toString().padLeft(2, '0')}-${selectedDueDate!.day.toString().padLeft(2, '0')}';
+                      }
+                      ref.read(tasksProvider.notifier).createTask(
+                        controller.text,
+                        notes: notesController.text.isNotEmpty ? notesController.text : null,
+                        dueDate: dueDateStr,
+                      );
                       Navigator.pop(context);
                     }
                   },
@@ -346,11 +385,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   void _showEditTaskDialog(BuildContext context, WidgetRef ref, TaskItem task) {
     final titleController = TextEditingController(text: task.title);
+    final notesController = TextEditingController(text: task.notes ?? '');
     final dueDateController = TextEditingController(text: task.dueDate ?? '');
     
     showModalBottomSheet(
@@ -398,6 +439,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             ),
             const Gap(12),
             TextField(
+              controller: notesController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: 'Notes',
+                prefixIcon: Icon(Icons.notes_outlined, color: Colors.grey.shade400),
+              ),
+            ),
+            const Gap(12),
+            TextField(
               controller: dueDateController,
               decoration: InputDecoration(
                 labelText: 'Due Date (YYYY-MM-DD)',
@@ -420,6 +470,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       ref.read(tasksProvider.notifier).updateTask(
                         task.id,
                         title: titleController.text,
+                        notes: notesController.text.isNotEmpty ? notesController.text : null,
                         dueDate: dueDateController.text.isNotEmpty ? dueDateController.text : null,
                       );
                       Navigator.pop(context);

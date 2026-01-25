@@ -4,19 +4,30 @@ import 'package:vyana_flutter/core/api_client.dart';
 part 'tasks_provider.g.dart';
 
 class TaskItem {
-  final int id;
+  final String id;  // Changed to String for Google Tasks
   final String title;
   final bool isCompleted;
   final String? dueDate;
+  final String? notes;
+  final String? status;
 
-  TaskItem({required this.id, required this.title, required this.isCompleted, this.dueDate});
+  TaskItem({
+    required this.id, 
+    required this.title, 
+    required this.isCompleted, 
+    this.dueDate,
+    this.notes,
+    this.status,
+  });
   
   factory TaskItem.fromJson(Map<String, dynamic> json) {
     return TaskItem(
-      id: json['id'],
-      title: json['title'],
-      isCompleted: json['is_completed'],
-      dueDate: json['due_date'],
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? '',
+      isCompleted: json['is_completed'] ?? json['status'] == 'completed',
+      dueDate: json['due'] ?? json['due_date'],
+      notes: json['notes'],
+      status: json['status'],
     );
   }
 }
@@ -32,9 +43,8 @@ class Tasks extends _$Tasks {
     final apiClient = ref.read(apiClientProvider);
     try {
       final res = await apiClient.get('/tasks/list');
-      if (res != null) {
-        final List<dynamic> list = res;
-        return list.map((e) => TaskItem.fromJson(e)).toList();
+      if (res != null && res is List) {
+        return res.map((e) => TaskItem.fromJson(e)).toList();
       }
       return [];
     } catch (e) {
@@ -43,10 +53,13 @@ class Tasks extends _$Tasks {
     }
   }
 
-  Future<void> createTask(String title) async {
+  Future<void> createTask(String title, {String? notes, String? dueDate}) async {
     final apiClient = ref.read(apiClientProvider);
     try {
-      await apiClient.post('/tasks/create', body: {'title': title});
+      final body = <String, dynamic>{'title': title};
+      if (notes != null) body['notes'] = notes;
+      if (dueDate != null) body['due_date'] = dueDate;
+      await apiClient.post('/tasks/create', body: body);
       // Invalidate self to refetch
       ref.invalidateSelf(); 
     } catch (e) {
@@ -54,7 +67,7 @@ class Tasks extends _$Tasks {
     }
   }
 
-  Future<void> completeTask(int id) async {
+  Future<void> completeTask(String id) async {
     final apiClient = ref.read(apiClientProvider);
     try {
       await apiClient.post('/tasks/complete', body: {'task_id': id});
@@ -64,11 +77,22 @@ class Tasks extends _$Tasks {
     }
   }
 
-  Future<void> updateTask(int id, {String? title, String? dueDate}) async {
+  Future<void> uncompleteTask(String id) async {
+    final apiClient = ref.read(apiClientProvider);
+    try {
+      await apiClient.post('/tasks/uncomplete', body: {'task_id': id});
+      ref.invalidateSelf();
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> updateTask(String id, {String? title, String? notes, String? dueDate}) async {
     final apiClient = ref.read(apiClientProvider);
     try {
       final body = <String, dynamic>{'task_id': id};
       if (title != null) body['title'] = title;
+      if (notes != null) body['notes'] = notes;
       if (dueDate != null) body['due_date'] = dueDate;
       await apiClient.post('/tasks/update', body: body);
       ref.invalidateSelf();
@@ -77,7 +101,7 @@ class Tasks extends _$Tasks {
     }
   }
 
-  Future<void> deleteTask(int id) async {
+  Future<void> deleteTask(String id) async {
     final apiClient = ref.read(apiClientProvider);
     try {
       await apiClient.post('/tasks/delete', body: {'task_id': id});

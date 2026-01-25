@@ -16,10 +16,11 @@ class OAuthService:
         self.db_path = db_path
         self._init_db()
         
-        # Scopes required for Gmail and Calendar
+        # Scopes required for Gmail, Calendar, and Tasks
         self.SCOPES = [
             'https://www.googleapis.com/auth/gmail.modify',
-            'https://www.googleapis.com/auth/calendar'
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/tasks'
         ]
 
     def _init_db(self):
