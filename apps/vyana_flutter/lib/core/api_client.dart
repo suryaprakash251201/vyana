@@ -34,8 +34,23 @@ class ApiClient {
 
   ApiClient({required this.baseUrl});
 
+  String _normalizeBaseUrl(String value) {
+    var trimmed = value.trim();
+    if (trimmed.isEmpty) return trimmed;
+    if (trimmed.startsWith('//')) {
+      return 'https:$trimmed';
+    }
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed == null || parsed.scheme.isEmpty) {
+      return 'https://$trimmed';
+    }
+    return trimmed;
+  }
+
   Uri resolve(String path, {String? fallbackBaseUrl}) {
-    final resolvedBase = (baseUrl.isNotEmpty ? baseUrl : (fallbackBaseUrl ?? '')).trim();
+    final resolvedBase = _normalizeBaseUrl(
+      baseUrl.isNotEmpty ? baseUrl : (fallbackBaseUrl ?? ''),
+    );
     if (resolvedBase.isEmpty) {
       throw ApiException(message: 'Backend URL is not configured');
     }

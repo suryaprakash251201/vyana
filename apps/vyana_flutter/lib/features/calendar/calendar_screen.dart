@@ -23,6 +23,10 @@ class SelectedDateNotifier extends Notifier<DateTime> {
 final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((ref, date) async {
   final apiClient = ref.watch(apiClientProvider);
   final prefs = await SharedPreferences.getInstance();
+  final calendarId = prefs.getString('calendarId');
+  final calendarIdParam = (calendarId != null && calendarId.trim().isNotEmpty)
+      ? '&calendar_id=${Uri.encodeComponent(calendarId.trim())}'
+      : '';
   
   // Format target date: YYYY-MM-DD
   final dateStr = "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
@@ -31,7 +35,7 @@ final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((r
   // 1. Try to fetch from API
   try {
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    final res = await apiClient.get('/calendar/events?date=$dateStr&user_id=$userId');
+    final res = await apiClient.get('/calendar/events?date=$dateStr&user_id=$userId$calendarIdParam');
     if (res['events'] is List) {
       final events = res['events'] as List<dynamic>;
       // Save to cache
@@ -71,10 +75,15 @@ final scheduleEventsProvider = FutureProvider<List<dynamic>>((ref) async {
   // Fetch next 7 days
   final end = now.add(const Duration(days: 7));
   final endStr = "${end.year}-${end.month.toString().padLeft(2,'0')}-${end.day.toString().padLeft(2,'0')}";
+  final prefs = await SharedPreferences.getInstance();
+  final calendarId = prefs.getString('calendarId');
+  final calendarIdParam = (calendarId != null && calendarId.trim().isNotEmpty)
+      ? '&calendar_id=${Uri.encodeComponent(calendarId.trim())}'
+      : '';
   
   try {
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr&user_id=$userId');
+    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr&user_id=$userId$calendarIdParam');
     if (res['events'] is List) {
       return res['events'] as List<dynamic>;
     }
@@ -562,6 +571,8 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
     final startStr = dt.toIso8601String();
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final calendarId = prefs.getString('calendarId');
       Map<String, dynamic> result;
       
       if (isEditing) {
@@ -572,6 +583,7 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
           'start_time': startStr,
           'duration_minutes': 60,
           'description': _descriptionController.text,
+          if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
         });
       } else {
         // Create new event
@@ -581,6 +593,7 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
           'duration_minutes': 60,
           'description': _descriptionController.text,
           'user_id': Supabase.instance.client.auth.currentUser?.id,
+          if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
         });
       }
       
@@ -617,8 +630,11 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
     
     setState(() => _saving = true);
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final calendarId = prefs.getString('calendarId');
       await ref.read(apiClientProvider).delete('/calendar/delete', body: {
         'id': widget.existingEvent!['id'],
+        if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
       });
       if (mounted) {
         Navigator.pop(context);

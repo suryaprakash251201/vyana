@@ -25,11 +25,29 @@ abstract class SettingsState with _$SettingsState {
 
 @Riverpod(keepAlive: true)
 class Settings extends _$Settings {
+  String _normalizeBackendUrl(String value) {
+    var trimmed = value.trim();
+    if (trimmed.isEmpty) return trimmed;
+    if (trimmed.startsWith('//')) {
+      return 'https:$trimmed';
+    }
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed == null || parsed.scheme.isEmpty) {
+      return 'https://$trimmed';
+    }
+    return trimmed;
+  }
+
   @override
   Future<SettingsState> build() async {
     final prefs = await SharedPreferences.getInstance();
+    final storedBackendUrl = prefs.getString('backendUrl') ?? AppConstants.defaultBaseUrl;
+    final normalizedBackendUrl = _normalizeBackendUrl(storedBackendUrl);
+    if (normalizedBackendUrl != storedBackendUrl) {
+      await prefs.setString('backendUrl', normalizedBackendUrl);
+    }
     return SettingsState(
-      backendUrl: prefs.getString('backendUrl') ?? AppConstants.defaultBaseUrl,
+      backendUrl: normalizedBackendUrl,
       toolsEnabled: prefs.getBool('toolsEnabled') ?? true,
       tamilMode: prefs.getBool('tamilMode') ?? false,
       isDarkTheme: prefs.getBool('isDarkTheme') ?? false,
@@ -44,8 +62,9 @@ class Settings extends _$Settings {
 
   Future<void> setBackendUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('backendUrl', url);
-    state = AsyncData(state.value!.copyWith(backendUrl: url));
+    final normalized = _normalizeBackendUrl(url);
+    await prefs.setString('backendUrl', normalized);
+    state = AsyncData(state.value!.copyWith(backendUrl: normalized));
   }
 
   Future<void> toggleTools(bool value) async {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/settings/settings_provider.dart';
 import 'package:vyana_flutter/features/settings/low_cost_provider.dart';
@@ -108,6 +109,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _urlController;
   late TextEditingController _customInstructionsController;
   late TextEditingController _customModelController;
+  late TextEditingController _calendarIdController;
 
   @override
   void initState() {
@@ -115,6 +117,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _urlController = TextEditingController();
     _customInstructionsController = TextEditingController();
     _customModelController = TextEditingController();
+    _calendarIdController = TextEditingController();
+    _loadCalendarId();
+  }
+
+  Future<void> _loadCalendarId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('calendarId') ?? '';
+    if (mounted) {
+      _calendarIdController.text = stored;
+    }
   }
 
   @override
@@ -122,6 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _urlController.dispose();
     _customInstructionsController.dispose();
     _customModelController.dispose();
+    _calendarIdController.dispose();
     super.dispose();
   }
 
@@ -700,6 +713,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("Backend URL saved")),
                             );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Gap(12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _calendarIdController,
+                      decoration: InputDecoration(
+                        labelText: "Google Calendar ID",
+                        helperText: "e.g., 1b7...@group.calendar.google.com",
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.save),
+                          onPressed: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setString('calendarId', _calendarIdController.text.trim());
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Calendar ID saved")),
+                              );
+                            }
                           },
                         ),
                       ),

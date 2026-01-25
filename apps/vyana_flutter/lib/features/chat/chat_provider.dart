@@ -182,7 +182,7 @@ class Chat extends _$Chat {
 
   Future<bool> _sendMessageInternal(String content, {required bool addUserMessage}) async {
     var adjustedContent = content;
-    final lowCost = ref.read(lowCostSettingsProvider).valueOrNull;
+    final lowCost = ref.read(lowCostSettingsProvider).value;
     if (lowCost != null && lowCost.enabled && content.length > lowCost.maxInputChars) {
       adjustedContent = content.substring(0, lowCost.maxInputChars);
     }
@@ -307,7 +307,7 @@ class Chat extends _$Chat {
 
       var success = await runStreamWithModel(settings.geminiModel);
       if (!success) {
-        final lowCostSettings = ref.read(lowCostSettingsProvider).valueOrNull;
+        final lowCostSettings = ref.read(lowCostSettingsProvider).value;
         if (lowCostSettings != null && lowCostSettings.enabled && lowCostSettings.fallbackModel != settings.geminiModel) {
           _appendContent(assistantMsgId, '\nRetrying with fallback model...\n');
           success = await runStreamWithModel(lowCostSettings.fallbackModel);

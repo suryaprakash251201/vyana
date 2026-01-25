@@ -25,39 +25,31 @@ class LowCostSettingsState {
   }
 }
 
-final lowCostSettingsProvider = StateNotifierProvider<LowCostSettingsNotifier, AsyncValue<LowCostSettingsState>>(
-  (ref) => LowCostSettingsNotifier(),
+final lowCostSettingsProvider = AsyncNotifierProvider<LowCostSettingsNotifier, LowCostSettingsState>(
+  LowCostSettingsNotifier.new,
 );
 
-class LowCostSettingsNotifier extends StateNotifier<AsyncValue<LowCostSettingsState>> {
-  LowCostSettingsNotifier() : super(const AsyncValue.loading()) {
-    _load();
-  }
+class LowCostSettingsNotifier extends AsyncNotifier<LowCostSettingsState> {
 
   static const _keyEnabled = 'lowCostEnabled';
   static const _keyMaxChars = 'lowCostMaxChars';
   static const _keyFallbackModel = 'lowCostFallbackModel';
 
-  Future<void> _load() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final enabled = prefs.getBool(_keyEnabled) ?? true;
-      final maxChars = prefs.getInt(_keyMaxChars) ?? 1200;
-      final fallbackModel = prefs.getString(_keyFallbackModel) ?? 'llama-3.1-8b-instant';
-      state = AsyncValue.data(
-        LowCostSettingsState(
-          enabled: enabled,
-          maxInputChars: maxChars,
-          fallbackModel: fallbackModel,
-        ),
-      );
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+  @override
+  Future<LowCostSettingsState> build() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_keyEnabled) ?? true;
+    final maxChars = prefs.getInt(_keyMaxChars) ?? 1200;
+    final fallbackModel = prefs.getString(_keyFallbackModel) ?? 'llama-3.1-8b-instant';
+    return LowCostSettingsState(
+      enabled: enabled,
+      maxInputChars: maxChars,
+      fallbackModel: fallbackModel,
+    );
   }
 
   Future<void> setEnabled(bool value) async {
-    final current = state.valueOrNull ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
     state = AsyncValue.data(current.copyWith(enabled: value));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyEnabled, value);
@@ -65,14 +57,14 @@ class LowCostSettingsNotifier extends StateNotifier<AsyncValue<LowCostSettingsSt
 
   Future<void> setMaxInputChars(int value) async {
     final normalized = value.clamp(200, 4000);
-    final current = state.valueOrNull ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
     state = AsyncValue.data(current.copyWith(maxInputChars: normalized));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyMaxChars, normalized);
   }
 
   Future<void> setFallbackModel(String value) async {
-    final current = state.valueOrNull ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
     state = AsyncValue.data(current.copyWith(fallbackModel: value));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyFallbackModel, value);
