@@ -14,7 +14,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
-  - CORS_ORIGINS=https://vyana.suryaprakashinfo.in,http://103.194.228.99:8000,http://3.194.228.99:8000,http://localhost:3000,*
+      - CORS_ORIGINS=https://vyana.suryaprakashinfo.in,http://103.194.228.99:8000,http://3.194.228.99:8000,http://localhost:3000,*
     volumes:
       - ./services/vyana_backend/data:/app/data
       - ./services/vyana_backend/vyana.db:/app/vyana.db
