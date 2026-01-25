@@ -329,13 +329,22 @@ class CalendarScreen extends ConsumerWidget {
         final start = event['start'] ?? '';
         final location = event['location'];
         final description = event['description'] ?? '';
+        final meetLink = event['meet_link'];
+        final isAllDay = event['is_all_day'] == true;
+        final recurrence = event['recurrence'];
+        
+        // Get color from event
+        final colorId = event['color_id']?.toString() ?? '9';
+        final eventColor = calendarColors[colorId] ?? AppColors.accentPink;
         
         // Parse time
         String timeStr = "";
         DateTime? eventDate;
         try {
           eventDate = DateTime.parse(start).toLocal();
-          timeStr = "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
+          timeStr = isAllDay 
+            ? "All day" 
+            : "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
         } catch (_) {}
 
         return GestureDetector(
@@ -369,12 +378,12 @@ class CalendarScreen extends ConsumerWidget {
               children: [
                 Column(
                   children: [
-                     Text(timeStr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                     Text(timeStr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isAllDay ? eventColor : null)),
                      Container(
                       width: 4, height: 40,
                       margin: const EdgeInsets.only(top: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.accentPink,
+                        color: eventColor,
                         borderRadius: BorderRadius.circular(4)
                       ),
                     ),
@@ -385,7 +394,43 @@ class CalendarScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(summary, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(summary, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ),
+                          if (recurrence != null) ...[
+                            const Gap(4),
+                            Icon(Icons.repeat, size: 16, color: Colors.grey.shade600),
+                          ],
+                          if (meetLink != null) ...[
+                            const Gap(4),
+                            GestureDetector(
+                              onTap: () async {
+                                final uri = Uri.parse(meetLink);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.videocam, size: 14, color: Colors.green.shade700),
+                                    const Gap(2),
+                                    Text("Meet", style: TextStyle(fontSize: 10, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       if (description.isNotEmpty) ...[
                         const Gap(4),
                         Text(description, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -473,12 +518,21 @@ class CalendarScreen extends ConsumerWidget {
   Widget _buildEventItem(BuildContext context, dynamic event, ThemeData theme, WidgetRef ref) {
       final summary = event['summary'] ?? 'No Title';
       final start = event['start'] ?? '';
+      final meetLink = event['meet_link'];
+      final isAllDay = event['is_all_day'] == true;
+      final recurrence = event['recurrence'];
+      
+      // Get color from event
+      final colorId = event['color_id']?.toString() ?? '9';
+      final eventColor = calendarColors[colorId] ?? AppColors.primaryPurple;
       
       String timeStr = "";
       DateTime? eventDate;
       try {
         eventDate = DateTime.parse(start).toLocal();
-        timeStr = "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
+        timeStr = isAllDay 
+          ? "All day" 
+          : "${eventDate.hour.toString().padLeft(2,'0')}:${eventDate.minute.toString().padLeft(2,'0')}";
       } catch (_) {}
 
       return GestureDetector(
@@ -509,17 +563,50 @@ class CalendarScreen extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                Text(timeStr, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPurple)),
+                Text(timeStr, style: TextStyle(fontWeight: FontWeight.bold, color: eventColor)),
                 const Gap(12),
-                Container(width: 2, height: 24, color: Colors.grey.withOpacity(0.2)),
+                Container(width: 3, height: 24, decoration: BoxDecoration(
+                  color: eventColor,
+                  borderRadius: BorderRadius.circular(2),
+                )),
                 const Gap(12),
                 Expanded(child: Text(summary, style: const TextStyle(fontWeight: FontWeight.w500))),
+                if (recurrence != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(Icons.repeat, size: 16, color: Colors.grey.shade500),
+                  ),
+                if (meetLink != null)
+                  GestureDetector(
+                    onTap: () async {
+                      final uri = Uri.parse(meetLink);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Icon(Icons.videocam, size: 18, color: Colors.green.shade600),
+                  ),
               ],
             ),
           )
       );
   }
 }
+
+// Calendar color mapping
+const Map<String, Color> calendarColors = {
+  '1': Color(0xFF7986CB), // Lavender
+  '2': Color(0xFF33B679), // Sage
+  '3': Color(0xFF8E24AA), // Grape
+  '4': Color(0xFFE67C73), // Flamingo
+  '5': Color(0xFFF6BF26), // Banana
+  '6': Color(0xFFFF8A65), // Tangerine
+  '7': Color(0xFF039BE5), // Peacock
+  '8': Color(0xFF616161), // Graphite
+  '9': Color(0xFF3F51B5), // Blueberry
+  '10': Color(0xFF0B8043), // Basil
+  '11': Color(0xFFD50000), // Tomato
+};
 
 class _AddEventSheet extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -534,9 +621,20 @@ class _AddEventSheet extends ConsumerStatefulWidget {
 class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _attendeesController = TextEditingController();
   late DateTime _selectedDate;
   TimeOfDay _selectedTime = TimeOfDay.now();
+  TimeOfDay _endTime = TimeOfDay.now();
   bool _saving = false;
+  
+  // New feature flags
+  bool _isAllDay = false;
+  bool _addMeetLink = false;
+  String _recurrence = 'none'; // none, daily, weekly, monthly, yearly
+  int _recurrenceCount = 1;
+  String _colorId = '9'; // Default blueberry
+  int _reminderMinutes = 30;
 
   bool get isEditing => widget.existingEvent != null;
 
@@ -544,11 +642,14 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate;
+    _endTime = TimeOfDay(hour: _selectedTime.hour + 1, minute: _selectedTime.minute);
     
     if (widget.existingEvent != null) {
       _titleController.text = widget.existingEvent!['summary'] ?? '';
       _descriptionController.text = widget.existingEvent!['description'] ?? '';
+      _locationController.text = widget.existingEvent!['location'] ?? '';
       
+      // Parse existing event data
       final startStr = widget.existingEvent!['start'];
       if (startStr != null) {
         try {
@@ -556,6 +657,34 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
           _selectedDate = DateUtils.dateOnly(dt);
           _selectedTime = TimeOfDay(hour: dt.hour, minute: dt.minute);
         } catch (_) {}
+      }
+      
+      final endStr = widget.existingEvent!['end'];
+      if (endStr != null) {
+        try {
+          final dt = DateTime.parse(endStr).toLocal();
+          _endTime = TimeOfDay(hour: dt.hour, minute: dt.minute);
+        } catch (_) {}
+      }
+      
+      // Check if all-day event
+      _isAllDay = widget.existingEvent!['is_all_day'] == true;
+      
+      // Color
+      if (widget.existingEvent!['color_id'] != null) {
+        _colorId = widget.existingEvent!['color_id'].toString();
+      }
+      
+      // Check for Meet link
+      _addMeetLink = widget.existingEvent!['meet_link'] != null;
+      
+      // Recurrence
+      if (widget.existingEvent!['recurrence'] != null) {
+        final recStr = widget.existingEvent!['recurrence'].toString().toLowerCase();
+        if (recStr.contains('daily')) _recurrence = 'daily';
+        else if (recStr.contains('weekly')) _recurrence = 'weekly';
+        else if (recStr.contains('monthly')) _recurrence = 'monthly';
+        else if (recStr.contains('yearly')) _recurrence = 'yearly';
       }
     }
   }
@@ -569,32 +698,44 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
       _selectedTime.hour, _selectedTime.minute
     );
     final startStr = dt.toIso8601String();
+    
+    // Calculate duration
+    final startMinutes = _selectedTime.hour * 60 + _selectedTime.minute;
+    final endMinutes = _endTime.hour * 60 + _endTime.minute;
+    int durationMinutes = endMinutes - startMinutes;
+    if (durationMinutes <= 0) durationMinutes = 60; // Default 1 hour
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final calendarId = prefs.getString('calendarId');
       Map<String, dynamic> result;
       
+      // Build request body with all features
+      final body = <String, dynamic>{
+        'summary': _titleController.text,
+        'start_time': startStr,
+        'duration_minutes': _isAllDay ? 1440 : durationMinutes,
+        'description': _descriptionController.text,
+        'is_all_day': _isAllDay,
+        'add_meet_link': _addMeetLink,
+        'color_id': _colorId,
+        'reminders': [_reminderMinutes],
+        if (_locationController.text.isNotEmpty) 'location': _locationController.text,
+        if (_attendeesController.text.isNotEmpty) 
+          'attendees': _attendeesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        if (_recurrence != 'none') 'recurrence': _recurrence.toUpperCase(),
+        if (_recurrence != 'none') 'recurrence_count': _recurrenceCount,
+        if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
+      };
+      
       if (isEditing) {
         // Update existing event
-        result = await ref.read(apiClientProvider).put('/calendar/update', body: {
-          'id': widget.existingEvent!['id'],
-          'summary': _titleController.text,
-          'start_time': startStr,
-          'duration_minutes': 60,
-          'description': _descriptionController.text,
-          if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
-        });
+        body['id'] = widget.existingEvent!['id'];
+        result = await ref.read(apiClientProvider).put('/calendar/update', body: body);
       } else {
         // Create new event
-        result = await ref.read(apiClientProvider).post('/calendar/create', body: {
-          'summary': _titleController.text,
-          'start_time': startStr,
-          'duration_minutes': 60,
-          'description': _descriptionController.text,
-          'user_id': Supabase.instance.client.auth.currentUser?.id,
-          if (calendarId != null && calendarId.trim().isNotEmpty) 'calendar_id': calendarId.trim(),
-        });
+        body['user_id'] = Supabase.instance.client.auth.currentUser?.id;
+        result = await ref.read(apiClientProvider).post('/calendar/create', body: body);
       }
       
       if (mounted) {
@@ -676,49 +817,269 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
                   ),
               ],
             ),
-            const Gap(24),
+            const Gap(16),
+            
+            // Title
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: "Event Title", border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: "Event Title",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.title),
+              ),
               autofocus: !isEditing,
             ),
-            const Gap(16),
+            const Gap(12),
+            
+            // Description
             TextField(
               controller: _descriptionController,
               decoration: const InputDecoration(
                 labelText: "Description (optional)",
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.notes),
                 hintText: "Add notes about this event...",
               ),
-              maxLines: 3,
+              maxLines: 2,
+            ),
+            const Gap(12),
+            
+            // Location
+            TextField(
+              controller: _locationController,
+              decoration: const InputDecoration(
+                labelText: "Location (optional)",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.location_on),
+                hintText: "Add location...",
+              ),
             ),
             const Gap(16),
+            
+            // All-day toggle
+            SwitchListTile(
+              title: const Text("All-day event"),
+              subtitle: const Text("Event spans entire day"),
+              value: _isAllDay,
+              onChanged: (v) => setState(() => _isAllDay = v),
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.wb_sunny_outlined),
+            ),
+            
+            // Date and Time pickers
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                       final d = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime.now().subtract(const Duration(days: 365)), lastDate: DateTime(2030));
+                       final d = await showDatePicker(
+                         context: context, 
+                         initialDate: _selectedDate, 
+                         firstDate: DateTime.now().subtract(const Duration(days: 365)), 
+                         lastDate: DateTime(2030)
+                       );
                        if (d != null) setState(() => _selectedDate = d);
                     },
                     icon: const Icon(Icons.calendar_today),
                     label: Text("${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}"),
                   ),
                 ),
+                if (!_isAllDay) ...[
+                  const Gap(8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                         final t = await showTimePicker(context: context, initialTime: _selectedTime);
+                         if (t != null) setState(() => _selectedTime = t);
+                      },
+                      icon: const Icon(Icons.access_time),
+                      label: Text(_selectedTime.format(context)),
+                    ),
+                  ),
+                  const Gap(8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                         final t = await showTimePicker(context: context, initialTime: _endTime);
+                         if (t != null) setState(() => _endTime = t);
+                      },
+                      icon: const Icon(Icons.access_time_filled),
+                      label: Text(_endTime.format(context)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const Gap(16),
+            
+            // Color picker
+            Row(
+              children: [
+                const Icon(Icons.palette, color: Colors.grey),
                 const Gap(12),
+                const Text("Color: "),
+                const Gap(8),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                       final t = await showTimePicker(context: context, initialTime: _selectedTime);
-                       if (t != null) setState(() => _selectedTime = t);
-                    },
-                    icon: const Icon(Icons.access_time),
-                    label: Text(_selectedTime.format(context)),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: calendarColors.entries.map((entry) {
+                        final isSelected = _colorId == entry.key;
+                        return GestureDetector(
+                          onTap: () => setState(() => _colorId = entry.key),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: entry.value,
+                              shape: BoxShape.circle,
+                              border: isSelected 
+                                ? Border.all(color: Colors.white, width: 2)
+                                : null,
+                              boxShadow: isSelected 
+                                ? [BoxShadow(color: entry.value.withOpacity(0.5), blurRadius: 8)]
+                                : null,
+                            ),
+                            child: isSelected 
+                              ? const Icon(Icons.check, color: Colors.white, size: 16) 
+                              : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ],
             ),
+            const Gap(16),
+            
+            // Google Meet toggle
+            SwitchListTile(
+              title: const Text("Add Google Meet"),
+              subtitle: const Text("Generate video call link"),
+              value: _addMeetLink,
+              onChanged: (v) => setState(() => _addMeetLink = v),
+              contentPadding: EdgeInsets.zero,
+              secondary: Icon(Icons.videocam, color: _addMeetLink ? Colors.green : Colors.grey),
+            ),
+            
+            // Recurrence
+            Row(
+              children: [
+                const Icon(Icons.repeat, color: Colors.grey),
+                const Gap(12),
+                const Text("Repeat: "),
+                const Gap(8),
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: _recurrence,
+                    isExpanded: true,
+                    underline: Container(),
+                    items: const [
+                      DropdownMenuItem(value: 'none', child: Text('Does not repeat')),
+                      DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                      DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                      DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                      DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                    ],
+                    onChanged: (v) => setState(() => _recurrence = v ?? 'none'),
+                  ),
+                ),
+              ],
+            ),
+            if (_recurrence != 'none') ...[
+              const Gap(8),
+              Row(
+                children: [
+                  const Gap(36),
+                  const Text("For "),
+                  SizedBox(
+                    width: 60,
+                    child: TextField(
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        border: OutlineInputBorder(),
+                      ),
+                      controller: TextEditingController(text: _recurrenceCount.toString()),
+                      onChanged: (v) {
+                        final n = int.tryParse(v);
+                        if (n != null && n > 0) _recurrenceCount = n;
+                      },
+                    ),
+                  ),
+                  const Gap(8),
+                  Text("${_recurrence == 'daily' ? 'days' : _recurrence == 'weekly' ? 'weeks' : _recurrence == 'monthly' ? 'months' : 'years'}"),
+                ],
+              ),
+            ],
+            const Gap(16),
+            
+            // Reminder
+            Row(
+              children: [
+                const Icon(Icons.notifications_outlined, color: Colors.grey),
+                const Gap(12),
+                const Text("Reminder: "),
+                const Gap(8),
+                Expanded(
+                  child: DropdownButton<int>(
+                    value: _reminderMinutes,
+                    isExpanded: true,
+                    underline: Container(),
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('At time of event')),
+                      DropdownMenuItem(value: 5, child: Text('5 minutes before')),
+                      DropdownMenuItem(value: 10, child: Text('10 minutes before')),
+                      DropdownMenuItem(value: 15, child: Text('15 minutes before')),
+                      DropdownMenuItem(value: 30, child: Text('30 minutes before')),
+                      DropdownMenuItem(value: 60, child: Text('1 hour before')),
+                      DropdownMenuItem(value: 1440, child: Text('1 day before')),
+                    ],
+                    onChanged: (v) => setState(() => _reminderMinutes = v ?? 30),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(16),
+            
+            // Attendees
+            TextField(
+              controller: _attendeesController,
+              decoration: const InputDecoration(
+                labelText: "Attendees (optional)",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.people_outline),
+                hintText: "email1@example.com, email2@example.com",
+              ),
+            ),
             const Gap(24),
+            
+            // Show existing Meet link if editing
+            if (isEditing && widget.existingEvent!['meet_link'] != null) ...[
+              Card(
+                color: Colors.green.shade50,
+                child: ListTile(
+                  leading: const Icon(Icons.videocam, color: Colors.green),
+                  title: const Text("Google Meet"),
+                  subtitle: Text(widget.existingEvent!['meet_link'], style: const TextStyle(fontSize: 12)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.open_in_new),
+                    onPressed: () async {
+                      final uri = Uri.parse(widget.existingEvent!['meet_link']);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const Gap(16),
+            ],
+            
             FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(backgroundColor: AppColors.accentPink),
