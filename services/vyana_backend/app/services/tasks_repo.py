@@ -25,6 +25,8 @@ class AbstractTasksRepo:
         pass
     def complete_task(self, task_id: int) -> bool:
         pass
+    def get_task(self, task_id: int) -> Optional[TaskItem]:
+        pass
 
 class SqliteTasksRepo(AbstractTasksRepo):
     def __init__(self, db_path=DB_PATH):
@@ -83,6 +85,23 @@ class SqliteTasksRepo(AbstractTasksRepo):
             conn.commit()
             return cursor.rowcount > 0
     
+    def get_task(self, task_id: int) -> Optional[TaskItem]:
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute(
+                "SELECT id, title, is_completed, created_at, due_date FROM tasks WHERE id = ?",
+                (task_id,)
+            ).fetchone()
+            if not row:
+                return None
+            return TaskItem(
+                id=row[0],
+                title=row[1],
+                is_completed=bool(row[2]),
+                created_at=row[3],
+                due_date=row[4]
+            )
+
     def update_task(self, task_id: int, title: str = None, due_date: str = None) -> bool:
         """Update task title and/or due date"""
         if not title and not due_date:

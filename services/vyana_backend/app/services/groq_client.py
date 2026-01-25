@@ -12,6 +12,7 @@ from app.services.mcp_service import mcp_service
 from app.services.weather_service import weather_service
 from app.services.search_service import search_service
 from app.services.utils_service import utils_service
+from app.services.contact_service import contact_service
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -85,6 +86,19 @@ class GroqClient:
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_calendar_range",
+                    "description": "Gets upcoming calendar events for the next N days",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "days": {"type": "integer", "description": "Number of days to look ahead (default 7)"}
+                        }
+                    }
+                }
+            },
              {
                 "type": "function",
                 "function": {
@@ -95,6 +109,30 @@ class GroqClient:
                         "properties": {
                              "limit": {"type": "integer", "description": "Optional limit"}
                         }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "summarize_emails",
+                    "description": "Summarizes recent unread emails with optional limit",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "description": "Max emails to summarize (default 5)"}
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "daily_digest",
+                    "description": "Creates a quick daily digest of tasks, calendar, and unread email count",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
                     }
                 }
             },
@@ -133,15 +171,71 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "send_email",
-                    "description": "Sends an email",
+                    "description": "Sends an email. If you only have a name (e.g., 'Alice'), USE 'get_email_address' FIRST to find their email.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "to_email": {"type": "string", "description": "Recipient email"},
+                            "to_email": {"type": "string", "description": "Recipient email address"},
                             "subject": {"type": "string", "description": "Email subject"},
                             "body": {"type": "string", "description": "Email body"}
                         },
                         "required": ["to_email", "subject", "body"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_emails",
+                    "description": "Searches for emails using specified criteria. Useful for finding emails from a person or about a topic.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search query used for filtering (e.g., 'from:zerodha', 'subject:invoice', 'is:unread')"},
+                            "limit": {"type": "integer", "description": "Max number of emails to return (default 5)"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            # Contact Management Tools
+            {
+                "type": "function",
+                "function": {
+                    "name": "add_contact",
+                    "description": "Saves a new contact. Use this when the user asks to save someone's email.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Name of the person"},
+                            "email": {"type": "string", "description": "Email address"}
+                        },
+                        "required": ["name", "email"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_email_address",
+                    "description": "Finds an email address for a contact name.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Name to look up"}
+                        },
+                        "required": ["name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_contacts",
+                    "description": "Lists all saved contacts.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
                     }
                 }
             },
@@ -291,6 +385,17 @@ class GroqClient:
             {
                 "type": "function",
                 "function": {
+                    "name": "get_time_now",
+                    "description": "Returns the current time and date in IST",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "convert_currency",
                     "description": "Converts currency from one type to another",
                     "parameters": {
@@ -362,8 +467,37 @@ class GroqClient:
                 return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
             elif function_name == "get_calendar_today":
                 return str(calendar_service.get_events())
+            elif function_name == "get_calendar_range":
+                days = int(args.get("days", 7))
+                events = calendar_service.get_events()
+                try:
+                    from datetime import datetime, timedelta
+                    try:
+                        from zoneinfo import ZoneInfo
+                        ist = ZoneInfo("Asia/Kolkata")
+                    except ImportError:
+                        import pytz
+                        ist = pytz.timezone("Asia/Kolkata")
+                    now = datetime.now(ist)
+                    cutoff = now + timedelta(days=days)
+                    filtered = []
+                    for e in events:
+                        if isinstance(e, dict) and "error" not in e:
+                            start = e.get("start", "")
+                            if start:
+                                try:
+                                    event_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                                    if event_dt <= cutoff:
+                                        filtered.append(e)
+                                except ValueError:
+                                    filtered.append(e)
+                    return json.dumps(filtered)
+                except Exception:
+                    return json.dumps(events)
             elif function_name == "get_unread_emails_summary":
-                return str(gmail_service.summarize_emails())
+                return str(gmail_service.summarize_emails(args.get("limit", 5)))
+            elif function_name == "summarize_emails":
+                return str(gmail_service.summarize_emails(args.get("limit", 5)))
             elif function_name == "create_calendar_event":
                 return str(calendar_service.create_event(args["summary"], args["start_time"], args.get("duration_minutes", 60)))
             elif function_name == "take_notes":
@@ -373,6 +507,16 @@ class GroqClient:
                 return json.dumps(notes)
             elif function_name == "send_email":
                 return str(gmail_service.send_email(args["to_email"], args["subject"], args["body"]))
+            elif function_name == "search_emails":
+                return json.dumps(gmail_service.search_messages(args["query"], args.get("limit", 5)))
+            
+            # Contact tools
+            elif function_name == "add_contact":
+                return contact_service.add_contact(args["name"], args["email"])
+            elif function_name == "get_email_address":
+                return contact_service.get_email_address(args["name"])
+            elif function_name == "list_contacts":
+                return contact_service.list_contacts()
             # Weather tools
             elif function_name == "get_weather":
                 return weather_service.get_weather(args.get("city", "Mumbai"))
@@ -395,6 +539,44 @@ class GroqClient:
             elif function_name == "convert_units":
                 result = utils_service.convert_units(args["value"], args["from_unit"], args["to_unit"])
                 return json.dumps({"result": result})
+            elif function_name == "get_time_now":
+                from datetime import datetime
+                try:
+                    from zoneinfo import ZoneInfo
+                    ist = ZoneInfo("Asia/Kolkata")
+                except ImportError:
+                    import pytz
+                    ist = pytz.timezone("Asia/Kolkata")
+                now = datetime.now(ist)
+                return json.dumps({"result": now.strftime("%Y-%m-%d %H:%M:%S IST")})
+            elif function_name == "daily_digest":
+                from datetime import datetime
+                try:
+                    from zoneinfo import ZoneInfo
+                    ist = ZoneInfo("Asia/Kolkata")
+                except ImportError:
+                    import pytz
+                    ist = pytz.timezone("Asia/Kolkata")
+                today = datetime.now(ist).date()
+                tasks = tasks_repo.list_tasks(include_completed=False)
+                events = calendar_service.get_events()
+                today_events = []
+                for e in events:
+                    if isinstance(e, dict) and "error" not in e:
+                        start = e.get("start", "")
+                        if start:
+                            try:
+                                event_dt = datetime.fromisoformat(start.replace("Z", "+00:00")).date()
+                                if event_dt == today:
+                                    today_events.append(e)
+                            except ValueError:
+                                continue
+                unread = gmail_service.get_unread_count()
+                return json.dumps({
+                    "pending_tasks": len(tasks),
+                    "today_events": len(today_events),
+                    "unread_emails": unread
+                })
             else:
                 return "Unknown function"
         except Exception as e:
@@ -746,3 +928,6 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         except Exception as e:
             logger.error(f"Error in Groq chat_sync: {e}")
             return f"Error: {str(e)}"
+
+# Shared singleton instance so routers do not re-instantiate the client repeatedly
+groq_client = GroqClient()

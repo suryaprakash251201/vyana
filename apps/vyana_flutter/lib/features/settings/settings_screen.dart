@@ -5,9 +5,97 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/settings/settings_provider.dart';
+import 'package:vyana_flutter/features/settings/low_cost_provider.dart';
 import 'package:vyana_flutter/features/auth/supabase_auth_service.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/features/mcp/mcp_screen.dart';
+
+class _ModelOption {
+  final String id;
+  final String name;
+  final String description;
+  final String badge;
+
+  const _ModelOption({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.badge,
+  });
+}
+
+const List<_ModelOption> _groqModels = [
+  _ModelOption(
+    id: 'llama-3.1-8b-instant',
+    name: 'Llama 3.1 8B',
+    description: 'Fast, low cost, great for quick tasks and chat.',
+    badge: 'Fast',
+  ),
+  _ModelOption(
+    id: 'llama-3.1-70b-versatile',
+    name: 'Llama 3.1 70B',
+    description: 'Higher quality responses with strong reasoning.',
+    badge: 'Balanced',
+  ),
+  _ModelOption(
+    id: 'llama-3.3-70b-versatile',
+    name: 'Llama 3.3 70B',
+    description: 'Latest 70B variant with improved instruction following.',
+    badge: 'Quality',
+  ),
+  _ModelOption(
+    id: 'mixtral-8x7b-32768',
+    name: 'Mixtral 8x7B',
+    description: 'Strong for multi-step tasks with wide context.',
+    badge: 'Long context',
+  ),
+  _ModelOption(
+    id: 'gemma2-9b-it',
+    name: 'Gemma 2 9B',
+    description: 'Compact and efficient for daily assistant tasks.',
+    badge: 'Compact',
+  ),
+  _ModelOption(
+    id: 'gemma2-27b-it',
+    name: 'Gemma 2 27B',
+    description: 'Higher quality for detailed answers and summaries.',
+    badge: 'Quality',
+  ),
+  _ModelOption(
+    id: 'llama-3.2-1b-preview',
+    name: 'Llama 3.2 1B',
+    description: 'Ultra-fast, lightweight model for simple queries.',
+    badge: 'Ultra-fast',
+  ),
+  _ModelOption(
+    id: 'llama-3.2-3b-preview',
+    name: 'Llama 3.2 3B',
+    description: 'Lightweight model with better quality than 1B.',
+    badge: 'Fast',
+  ),
+  _ModelOption(
+    id: 'llama-3.2-11b-vision-preview',
+    name: 'Llama 3.2 11B Vision',
+    description: 'Vision-capable model (if supported by your backend).',
+    badge: 'Vision',
+  ),
+  _ModelOption(
+    id: 'llama-3.2-90b-vision-preview',
+    name: 'Llama 3.2 90B Vision',
+    description: 'High-quality vision model for advanced reasoning.',
+    badge: 'Vision+',
+  ),
+];
+
+final gmailStatusProvider = FutureProvider<bool>((ref) async {
+  try {
+    final apiClient = ref.read(apiClientProvider);
+    final response = await apiClient.get('/google/status');
+    return response['authenticated'] == true;
+  } catch (_) {
+    return false;
+  }
+});
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -18,17 +106,32 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _urlController;
+  late TextEditingController _customInstructionsController;
+  late TextEditingController _customModelController;
 
   @override
   void initState() {
     super.initState();
     _urlController = TextEditingController();
+    _customInstructionsController = TextEditingController();
+    _customModelController = TextEditingController();
   }
 
   @override
   void dispose() {
     _urlController.dispose();
+    _customInstructionsController.dispose();
+    _customModelController.dispose();
     super.dispose();
+  }
+
+  void _syncController(TextEditingController controller, String value) {
+    if (controller.text != value) {
+      controller.text = value;
+      controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: controller.text.length),
+      );
+    }
   }
 
   Future<void> _logout() async {
@@ -39,6 +142,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(settingsProvider);
+    final gmailStatusAsync = ref.watch(gmailStatusProvider);
+    final lowCostAsync = ref.watch(lowCostSettingsProvider);
     final theme = Theme.of(context);
 
 
@@ -59,9 +164,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (settings) {
-              if (_urlController.text.isEmpty) {
-                _urlController.text = settings.backendUrl;
-              }
+              _syncController(_urlController, settings.backendUrl);
+              _syncController(_customInstructionsController, settings.customInstructions);
 
               return ListView(
                 padding: const EdgeInsets.all(20),
@@ -145,6 +249,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           },
                         ),
                         const Gap(24),
+                        Row(
+                          children: [
+                            Text('Gmail Status', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            const Spacer(),
+                            gmailStatusAsync.when(
+                              data: (connected) => _statusChip(connected ? 'Connected' : 'Not connected', connected),
+                              loading: () => _statusChip('Checking', false),
+                              error: (_, __) => _statusChip('Unknown', false),
+                            )
+                          ],
+                        ),
+                        const Gap(12),
                         // Gmail Connect
                         SizedBox(
                           width: double.infinity,
@@ -155,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                  // We need to import apiClientProvider if not already available in scope or use ref.read
                                  // Assuming apiClientProvider is available from settings_screen imports (it is usually in api_client.dart)
                                  // Wait, I need to check imports.
-                                 final res = await ref.read(apiClientProvider).get('/auth/start');
+                                 final res = await apiClient.get('/google/start');
                                  if (res['auth_url'] != null) {
                                    final uri = Uri.parse(res['auth_url']);
                                    if (await canLaunchUrl(uri)) {
@@ -168,6 +284,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             },
                             icon: const Icon(Icons.mail),
                             label: const Text('Connect Gmail'),
+                          ),
+                        ),
+                        const Gap(10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              try {
+                                await ref.read(apiClientProvider).post('/google/logout');
+                                ref.invalidate(gmailStatusProvider);
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error disconnecting Gmail: $e")));
+                              }
+                            },
+                            icon: const Icon(Icons.link_off, color: Colors.grey),
+                            label: const Text('Disconnect Gmail', style: TextStyle(color: Colors.grey)),
                           ),
                         ),
                         const Gap(12),
@@ -203,21 +335,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ],
                     ),
-                    child: DropdownButtonFormField<String>(
-                      value: (settings.geminiModel.contains('llama') || settings.geminiModel.contains('mixtral')) ? settings.geminiModel : 'llama-3.1-8b-instant',
-                      items: const [
-                        DropdownMenuItem(value: 'llama-3.1-8b-instant', child: Text('Llama 3.1 8B (Groq)')),
-                        DropdownMenuItem(value: 'llama-3.1-70b-versatile', child: Text('Llama 3.1 70B (Groq)')),
-                        DropdownMenuItem(value: 'llama-3.3-70b-versatile', child: Text('Llama 3.3 70B (Groq)')),
-                        DropdownMenuItem(value: 'mixtral-8x7b-32768', child: Text('Mixtral 8x7b (Groq)')),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: settings.geminiModel,
+                          items: [
+                            ..._groqModels.map((model) => DropdownMenuItem(
+                                  value: model.id,
+                                  child: Text('${model.name} (Groq)'),
+                                )),
+                            if (!_groqModels.any((model) => model.id == settings.geminiModel))
+                              DropdownMenuItem(
+                                value: settings.geminiModel,
+                                child: Text('${settings.geminiModel} (Custom)'),
+                              ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) ref.read(settingsProvider.notifier).setModel(val);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Select Model',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const Gap(12),
+                        _modelInfoCard(settings.geminiModel),
+                        const Gap(12),
+                        TextField(
+                          controller: _customModelController,
+                          decoration: InputDecoration(
+                            labelText: 'Custom model ID',
+                            helperText: 'Paste any Groq model ID supported by your account',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.check_circle_outline),
+                              onPressed: () {
+                                final value = _customModelController.text.trim();
+                                if (value.isNotEmpty) {
+                                  ref.read(settingsProvider.notifier).setModel(value);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Custom model applied')),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
                       ],
-                      onChanged: (val) {
-                        if (val != null) ref.read(settingsProvider.notifier).setModel(val);
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Select Model',
-                        border: OutlineInputBorder(),
-                      ),
                     ),
                   ),
                   const Gap(24),
@@ -252,7 +417,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Gap(16),
                         TextField(
-                          controller: TextEditingController(text: settings.customInstructions),
+                          controller: _customInstructionsController,
                           maxLines: 4,
                           decoration: InputDecoration(
                             hintText: "E.g., 'I'm a software developer. Keep responses concise and technical.'",
@@ -260,13 +425,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.save),
                               onPressed: () {
-                                // Need to get the text from the controller
+                                ref.read(settingsProvider.notifier).setCustomInstructions(
+                                  _customInstructionsController.text.trim(),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Instructions saved')),
+                                );
                               },
                             ),
                           ),
-                          onChanged: (value) {
-                            ref.read(settingsProvider.notifier).setCustomInstructions(value);
-                          },
+                          onChanged: (_) {},
+                        ),
+                        const Gap(16),
+                        Text('Response Style', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        const Gap(8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildChoiceChip(
+                              label: 'Concise',
+                              selected: settings.responseStyle == 'Concise',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseStyle('Concise'),
+                            ),
+                            _buildChoiceChip(
+                              label: 'Balanced',
+                              selected: settings.responseStyle == 'Balanced',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseStyle('Balanced'),
+                            ),
+                            _buildChoiceChip(
+                              label: 'Detailed',
+                              selected: settings.responseStyle == 'Detailed',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseStyle('Detailed'),
+                            ),
+                          ],
+                        ),
+                        const Gap(16),
+                        Text('Response Tone', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        const Gap(8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildChoiceChip(
+                              label: 'Friendly',
+                              selected: settings.responseTone == 'Friendly',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseTone('Friendly'),
+                            ),
+                            _buildChoiceChip(
+                              label: 'Professional',
+                              selected: settings.responseTone == 'Professional',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseTone('Professional'),
+                            ),
+                            _buildChoiceChip(
+                              label: 'Direct',
+                              selected: settings.responseTone == 'Direct',
+                              onSelected: () => ref.read(settingsProvider.notifier).setResponseTone('Direct'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -318,6 +532,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onChanged: (val) => ref.read(settingsProvider.notifier).toggleTamilMode(val),
                         ),
                       ],
+                    ),
+                  ),
+                  const Gap(24),
+
+                  // Cost Control
+                  _buildSectionHeader('Cost Control', Icons.savings_outlined),
+                  const Gap(12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: lowCostAsync.when(
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => Text('Error: $e'),
+                      data: (lowCost) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Low-cost mode'),
+                              subtitle: const Text('Limit input size and auto-fallback to a lighter model'),
+                              value: lowCost.enabled,
+                              onChanged: (val) => ref.read(lowCostSettingsProvider.notifier).setEnabled(val),
+                            ),
+                            const Gap(12),
+                            Text('Max input length', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            Slider(
+                              value: lowCost.maxInputChars.toDouble(),
+                              min: 200,
+                              max: 4000,
+                              divisions: 19,
+                              label: '${lowCost.maxInputChars} chars',
+                              onChanged: lowCost.enabled
+                                  ? (val) => ref.read(lowCostSettingsProvider.notifier).setMaxInputChars(val.round())
+                                  : null,
+                            ),
+                            const Gap(12),
+                            Text('Fallback model', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            const Gap(8),
+                            DropdownButtonFormField<String>(
+                              value: lowCost.fallbackModel,
+                              items: _groqModels
+                                  .map((model) => DropdownMenuItem(
+                                        value: model.id,
+                                        child: Text('${model.name} (Groq)'),
+                                      ))
+                                  .toList(),
+                              onChanged: lowCost.enabled
+                                  ? (val) {
+                                      if (val != null) {
+                                        ref.read(lowCostSettingsProvider.notifier).setFallbackModel(val);
+                                      }
+                                    }
+                                  : null,
+                              decoration: const InputDecoration(
+                                labelText: 'Fallback model',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const Gap(24),
@@ -475,6 +761,102 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildChoiceChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: AppColors.primaryPurple.withOpacity(0.18),
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        color: selected ? AppColors.primaryPurple : Colors.grey.shade700,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+    );
+  }
+
+  Widget _statusChip(String text, bool active) {
+    final color = active ? AppColors.successGreen : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _modelInfoCard(String modelId) {
+    final theme = Theme.of(context);
+    final match = _groqModels.where((model) => model.id == modelId).toList();
+    final model = match.isNotEmpty ? match.first : null;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primaryPurple.withOpacity(0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.auto_awesome, color: AppColors.primaryPurple, size: 20),
+          ),
+          const Gap(12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  model?.name ?? modelId,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const Gap(4),
+                Text(
+                  model?.description ?? 'Custom model ID selected.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          if (model != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryPurple.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                model.badge,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.primaryPurple,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

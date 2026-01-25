@@ -20,6 +20,13 @@ async def test_tasks_flow():
         assert data["title"] == "Test Task"
         assert data["is_completed"] is False
 
+        # Update Task
+        res = await ac.post("/tasks/update", json={"task_id": task_id, "title": "Updated Task", "due_date": "2026-02-01"})
+        assert res.status_code == 200
+        updated = res.json()
+        assert updated["title"] == "Updated Task"
+        assert updated["due_date"] == "2026-02-01"
+
         # List Tasks
         res = await ac.get("/tasks/list")
         assert res.status_code == 200
@@ -33,6 +40,16 @@ async def test_tasks_flow():
         
         # Verify Completed
         res = await ac.get("/tasks/list") # Should be empty or not contain this one
+        tasks = res.json()
+        ids = [t["id"] for t in tasks]
+        assert task_id not in ids
+
+        # Delete Task (should still succeed even if already completed)
+        res = await ac.post("/tasks/delete", json={"task_id": task_id})
+        assert res.status_code == 200
+
+        # Verify deletion when including completed tasks
+        res = await ac.get("/tasks/list", params={"include_completed": True})
         tasks = res.json()
         ids = [t["id"] for t in tasks]
         assert task_id not in ids

@@ -7,11 +7,16 @@ import os
 import json
 import asyncio
 import httpx
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_URL = os.getenv("TEST_BASE_URL", "http://localhost:8080")
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_MCP_TESTS") != "1",
+    reason="Requires running backend server at TEST_BASE_URL"
+)
 
 
 class TestMCPServer:

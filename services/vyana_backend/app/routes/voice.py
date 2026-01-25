@@ -1,9 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from app.services.groq_client import GroqClient
+from app.services.groq_client import groq_client
 import logging
 
 router = APIRouter()
-groq_client = GroqClient()
 logger = logging.getLogger(__name__)
 
 @router.post("/transcribe")

@@ -12,6 +12,16 @@ class CreateTaskRequest(BaseModel):
 class CompleteTaskRequest(BaseModel):
     task_id: int
 
+
+class UpdateTaskRequest(BaseModel):
+    task_id: int
+    title: Optional[str] = None
+    due_date: Optional[str] = None
+
+
+class DeleteTaskRequest(BaseModel):
+    task_id: int
+
 @router.get("/list", response_model=List[TaskItem])
 def list_tasks(include_completed: bool = False):
     return tasks_repo.list_tasks(include_completed)
@@ -27,20 +37,19 @@ def complete_task(req: CompleteTaskRequest):
         raise HTTPException(status_code=404, detail="Task not found")
     return {"status": "success", "task_id": req.task_id}
 
-class UpdateTaskRequest(BaseModel):
-    task_id: int
-    title: Optional[str] = None
-    due_date: Optional[str] = None
-
-class DeleteTaskRequest(BaseModel):
-    task_id: int
-
-@router.post("/update")
+@router.post("/update", response_model=TaskItem)
 def update_task(req: UpdateTaskRequest):
-    success = tasks_repo.update_task(req.task_id, title=req.title, due_date=req.due_date)
+    if not req.title and not req.due_date:
+        raise HTTPException(status_code=400, detail="At least one field must be provided")
+
+    success = tasks_repo.update_task(req.task_id, req.title, req.due_date)
     if not success:
-        raise HTTPException(status_code=404, detail="Task not found or no changes made")
-    return {"status": "success", "task_id": req.task_id}
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    updated = tasks_repo.get_task(req.task_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return updated
 
 @router.post("/delete")
 def delete_task(req: DeleteTaskRequest):

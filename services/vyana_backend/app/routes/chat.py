@@ -2,10 +2,9 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from app.services.groq_client import GroqClient
+from app.services.groq_client import groq_client
 
 router = APIRouter()
-groq_client = GroqClient()
 
 class ChatMessage(BaseModel):
     role: str

@@ -85,6 +85,11 @@ class MCPScreen extends ConsumerWidget {
                       icon: const Icon(Icons.refresh),
                       tooltip: 'Refresh',
                     ),
+                    IconButton(
+                      onPressed: () => _showAddServerDialog(context, ref),
+                      icon: const Icon(Icons.add),
+                      tooltip: 'Add Connection',
+                    ),
                   ],
                 ),
               ),
@@ -274,6 +279,71 @@ class MCPScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _showAddServerDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final urlController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add MCP Server'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Server Name',
+                hintText: 'e.g. my-server',
+              ),
+            ),
+            const Gap(16),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'http://localhost:8000/mcp',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final url = urlController.text.trim();
+              
+              if (name.isEmpty || url.isEmpty) {
+                return;
+              }
+              
+              Navigator.pop(context);
+              
+              final result = await ref.read(mCPConnectionsProvider.notifier).addServer(name, url);
+              
+              if (context.mounted) {
+                if (result['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Added server: $name')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${result['error']}')),
+                  );
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

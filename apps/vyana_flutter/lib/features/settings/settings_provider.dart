@@ -17,6 +17,8 @@ abstract class SettingsState with _$SettingsState {
     required String geminiModel,
     required bool memoryEnabled,
     required bool mcpEnabled,
+    required String responseStyle,
+    required String responseTone,
     @Default('') String customInstructions,
   }) = _SettingsState;
 }
@@ -34,6 +36,8 @@ class Settings extends _$Settings {
       geminiModel: prefs.getString('geminiModel') ?? 'llama-3.1-8b-instant',
       memoryEnabled: prefs.getBool('memoryEnabled') ?? true,
       mcpEnabled: prefs.getBool('mcpEnabled') ?? true,
+      responseStyle: prefs.getString('responseStyle') ?? 'Balanced',
+      responseTone: prefs.getString('responseTone') ?? 'Friendly',
       customInstructions: prefs.getString('customInstructions') ?? '',
     );
   }
@@ -84,5 +88,17 @@ class Settings extends _$Settings {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('customInstructions', instructions);
     state = AsyncData(state.value!.copyWith(customInstructions: instructions));
+  }
+
+  Future<void> setResponseStyle(String style) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('responseStyle', style);
+    state = AsyncData(state.value!.copyWith(responseStyle: style));
+  }
+
+  Future<void> setResponseTone(String tone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('responseTone', tone);
+    state = AsyncData(state.value!.copyWith(responseTone: tone));
   }
 }

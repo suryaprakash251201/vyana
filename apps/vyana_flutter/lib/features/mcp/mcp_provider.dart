@@ -105,4 +105,22 @@ class MCPConnections extends _$MCPConnections {
       return null;
     }
   }
+
+  /// Add a new MCP server
+  Future<Map<String, dynamic>> addServer(String name, String url) async {
+    state = const AsyncLoading();
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final result = await apiClient.post('/mcp/servers', body: {
+        'name': name,
+        'url': url,
+      });
+      state = const AsyncData(null);
+      ref.invalidate(mcpServersProvider);
+      return result;
+    } catch (e) {
+      state = AsyncError(e, StackTrace.current);
+      return {'success': false, 'error': e.toString()};
+    }
+  }
 }

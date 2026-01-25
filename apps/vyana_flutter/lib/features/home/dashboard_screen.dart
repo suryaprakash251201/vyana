@@ -8,6 +8,21 @@ import 'package:vyana_flutter/features/calendar/calendar_screen.dart';
 import 'package:vyana_flutter/features/auth/supabase_auth_service.dart';
 import 'package:vyana_flutter/features/notifications/notifications_screen.dart';
 import 'package:vyana_flutter/features/voice_assistant/voice_assistant_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:vyana_flutter/core/api_client.dart';
+import 'package:vyana_flutter/features/mail/mail_screen.dart';
+
+final backendStatusProvider = FutureProvider<bool>((ref) async {
+  try {
+    final apiClient = ref.read(apiClientProvider);
+    final res = await apiClient.get('/health');
+    if (res is Map && res['status'] == 'ok') return true;
+    return true;
+  } catch (_) {
+    return false;
+  }
+});
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -27,6 +42,8 @@ class DashboardScreen extends ConsumerWidget {
 
     final tasksAsync = ref.watch(tasksProvider);
     final calendarAsync = ref.watch(calendarEventsProvider(DateUtils.dateOnly(DateTime.now())));
+    final unreadAsync = ref.watch(unreadProvider);
+    final backendStatusAsync = ref.watch(backendStatusProvider);
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
@@ -37,8 +54,11 @@ class DashboardScreen extends ConsumerWidget {
           );
         },
         backgroundColor: AppColors.primaryPurple,
-        child: const Icon(Icons.mic, color: Colors.white),
-      ),
+        child: const Icon(Icons.mic, color: Colors.white)
+            .animate(onPlay: (controller) => controller.repeat())
+            .shimmer(delay: 2000.ms, duration: 1000.ms)
+            .shake(hz: 4, curve: Curves.easeInOutCubic, duration: 1000.ms, delay: 2000.ms),
+      ).animate().scale(delay: 500.ms, duration: 300.ms, curve: Curves.easeOutBack),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -79,7 +99,7 @@ class DashboardScreen extends ConsumerWidget {
                           errorBuilder: (c, e, s) => const Icon(Icons.auto_awesome, color: AppColors.primaryPurple),
                         ),
                       ),
-                    ),
+                    ).animate().fade().scale(duration: 400.ms),
                     const Gap(12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,10 +110,16 @@ class DashboardScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.primary,
                           ),
-                        ),
+                        ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.2, end: 0),
                         Text(
                           'Ready to help you',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ).animate().fadeIn(delay: 200.ms, duration: 500.ms),
+                        const Gap(6),
+                        backendStatusAsync.when(
+                          data: (ok) => _statusChip(ok ? 'Backend: OK' : 'Backend: Offline', ok),
+                          loading: () => _statusChip('Backend: Checking', false),
+                          error: (_, __) => _statusChip('Backend: Error', false),
                         ),
                       ],
                     ),
@@ -126,7 +152,7 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    ),
+                    ).animate().scale(delay: 300.ms, duration: 300.ms),
                   ],
                 ),
               ),
@@ -153,22 +179,42 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "How can I help you today?",
-                            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                          SizedBox(
+                            height: 30, // Fixed height for typing text
+                            child: DefaultTextStyle(
+                              style: theme.textTheme.titleLarge!.copyWith(
+                                color: Colors.white, 
+                                fontWeight: FontWeight.bold
+                              ),
+                              child: AnimatedTextKit(
+                                animatedTexts: [
+                                  TypewriterAnimatedText(
+                                    'How can I help you today?',
+                                    speed: const Duration(milliseconds: 70),
+                                  ),
+                                ],
+                                totalRepeatCount: 1,
+                                displayFullTextOnTap: true,
+                              ),
+                            ),
                           ),
                           const Gap(8),
                           Text(
                             "I can manage your tasks, check your calendar, and draft emails.",
                             style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                          ),
+                          ).animate().fadeIn(delay: 1500.ms, duration: 500.ms),
                         ],
                       ),
-                    ),
+                    ).animate()
+                     .fadeIn(duration: 600.ms)
+                     .slideY(begin: 0.2, end: 0)
+                     .shimmer(delay: 1500.ms, duration: 1500.ms, color: Colors.white38),
+                     
                     const Gap(24),
 
+                    // Daily Digest
+                    _buildDigestCard(theme, tasksAsync, calendarAsync, unreadAsync),
                     const Gap(24),
-                    
 
                     // Stats Row
                     Row(
@@ -186,6 +232,7 @@ class DashboardScreen extends ConsumerWidget {
                               Icons.check_circle_outline,
                               AppColors.successGreen,
                               theme,
+                              index: 1,
                             ),
                           ),
                         ),
@@ -209,6 +256,7 @@ class DashboardScreen extends ConsumerWidget {
                               Icons.calendar_today,
                               AppColors.accentPink,
                               theme,
+                              index: 2,
                             ),
                           ),
                         ),
@@ -229,34 +277,41 @@ class DashboardScreen extends ConsumerWidget {
                           child: const Text("View All"),
                         )
                       ],
-                    ),
+                    ).animate().fadeIn(delay: 400.ms).slideX(),
                     const Gap(8),
                     tasksAsync.when(
                       data: (tasks) {
                         final pending = tasks.where((t) => !t.isCompleted).take(3).toList();
                         if (pending.isEmpty) {
-                          return Text("No pending tasks.", style: TextStyle(color: Colors.grey));
+                          return Text("No pending tasks.", style: TextStyle(color: Colors.grey))
+                              .animate().fadeIn(delay: 500.ms);
                         }
                         return Column(
-                          children: pending.map((t) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.circle_outlined, size: 16, color: Colors.grey),
-                                const Gap(12),
-                                Expanded(child: Text(t.title)),
-                              ],
-                            ),
-                          )).toList(),
+                          children: pending.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final t = entry.value;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.circle_outlined, size: 16, color: Colors.grey),
+                                  const Gap(12),
+                                  Expanded(child: Text(t.title)),
+                                ],
+                              ),
+                            ).animate(delay: (400 + (idx * 100)).ms)
+                             .fadeIn()
+                             .slideX(begin: 0.1);
+                          }).toList(),
                         );
                       },
-                      loading: () => const LinearProgressIndicator(),
+                      loading: () => const LinearProgressIndicator().animate().fadeIn(),
                       error: (_, __) => const Text("Could not load tasks"),
                     ),
                   ],
@@ -269,7 +324,109 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, ThemeData theme) {
+  Widget _buildDigestCard(
+    ThemeData theme,
+    AsyncValue<List<TaskItem>> tasksAsync,
+    AsyncValue<List<dynamic>> calendarAsync,
+    AsyncValue<int> unreadAsync,
+  ) {
+    final pending = tasksAsync.maybeWhen(
+      data: (tasks) => tasks.where((t) => !t.isCompleted).length,
+      orElse: () => null,
+    );
+
+    final events = calendarAsync.maybeWhen(
+      data: (events) {
+        if (events.length == 1 && events[0] is Map && events[0].containsKey('error')) {
+          return null;
+        }
+        return events.length;
+      },
+      orElse: () => null,
+    );
+
+    final unread = unreadAsync.maybeWhen(
+      data: (count) => count,
+      orElse: () => null,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 20),
+              const Gap(8),
+              Text('Daily Digest', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const Gap(10),
+          Text(
+            'Snapshot of today’s workload and inbox.',
+            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+          ),
+          const Gap(12),
+          Row(
+            children: [
+              _digestPill('Tasks', pending == null ? '...' : '$pending pending', AppColors.successGreen),
+              const Gap(8),
+              _digestPill('Events', events == null ? '...' : '$events today', AppColors.accentPink),
+              const Gap(8),
+              _digestPill('Mail', unread == null ? '...' : '$unread unread', AppColors.accentCyan),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  Widget _digestPill(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+          const Gap(2),
+          Text(value, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String text, bool active) {
+    final color = active ? AppColors.successGreen : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 10),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color, ThemeData theme, {int index = 0}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -292,14 +449,16 @@ class DashboardScreen extends ConsumerWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 20)
+                .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                .scaleXY(begin: 1.0, end: 1.2, duration: 1000.ms, curve: Curves.easeInOut),
           ),
           const Gap(12),
           Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
         ],
       ),
-    );
+    ).animate(delay: (200 * index).ms).fadeIn().slideY(begin: 0.2, end: 0);
   }
 
 

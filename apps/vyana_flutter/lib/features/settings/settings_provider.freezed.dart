@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SettingsState {
 
- String get backendUrl; bool get toolsEnabled; bool get tamilMode; bool get isDarkTheme; String get geminiModel; bool get memoryEnabled; bool get mcpEnabled; String get customInstructions;
+ String get backendUrl; bool get toolsEnabled; bool get tamilMode; bool get isDarkTheme; String get geminiModel; bool get memoryEnabled; bool get mcpEnabled; String get responseStyle; String get responseTone; String get customInstructions;
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $SettingsStateCopyWith<SettingsState> get copyWith => _$SettingsStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.toolsEnabled, toolsEnabled) || other.toolsEnabled == toolsEnabled)&&(identical(other.tamilMode, tamilMode) || other.tamilMode == tamilMode)&&(identical(other.isDarkTheme, isDarkTheme) || other.isDarkTheme == isDarkTheme)&&(identical(other.geminiModel, geminiModel) || other.geminiModel == geminiModel)&&(identical(other.memoryEnabled, memoryEnabled) || other.memoryEnabled == memoryEnabled)&&(identical(other.mcpEnabled, mcpEnabled) || other.mcpEnabled == mcpEnabled)&&(identical(other.customInstructions, customInstructions) || other.customInstructions == customInstructions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.toolsEnabled, toolsEnabled) || other.toolsEnabled == toolsEnabled)&&(identical(other.tamilMode, tamilMode) || other.tamilMode == tamilMode)&&(identical(other.isDarkTheme, isDarkTheme) || other.isDarkTheme == isDarkTheme)&&(identical(other.geminiModel, geminiModel) || other.geminiModel == geminiModel)&&(identical(other.memoryEnabled, memoryEnabled) || other.memoryEnabled == memoryEnabled)&&(identical(other.mcpEnabled, mcpEnabled) || other.mcpEnabled == mcpEnabled)&&(identical(other.responseStyle, responseStyle) || other.responseStyle == responseStyle)&&(identical(other.responseTone, responseTone) || other.responseTone == responseTone)&&(identical(other.customInstructions, customInstructions) || other.customInstructions == customInstructions));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,backendUrl,toolsEnabled,tamilMode,isDarkTheme,geminiModel,memoryEnabled,mcpEnabled,customInstructions);
+int get hashCode => Object.hash(runtimeType,backendUrl,toolsEnabled,tamilMode,isDarkTheme,geminiModel,memoryEnabled,mcpEnabled,responseStyle,responseTone,customInstructions);
 
 @override
 String toString() {
-  return 'SettingsState(backendUrl: $backendUrl, toolsEnabled: $toolsEnabled, tamilMode: $tamilMode, isDarkTheme: $isDarkTheme, geminiModel: $geminiModel, memoryEnabled: $memoryEnabled, mcpEnabled: $mcpEnabled, customInstructions: $customInstructions)';
+  return 'SettingsState(backendUrl: $backendUrl, toolsEnabled: $toolsEnabled, tamilMode: $tamilMode, isDarkTheme: $isDarkTheme, geminiModel: $geminiModel, memoryEnabled: $memoryEnabled, mcpEnabled: $mcpEnabled, responseStyle: $responseStyle, responseTone: $responseTone, customInstructions: $customInstructions)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $SettingsStateCopyWith<$Res>  {
   factory $SettingsStateCopyWith(SettingsState value, $Res Function(SettingsState) _then) = _$SettingsStateCopyWithImpl;
 @useResult
 $Res call({
- String backendUrl, bool toolsEnabled, bool tamilMode, bool isDarkTheme, String geminiModel, bool memoryEnabled, bool mcpEnabled, String customInstructions
+ String backendUrl, bool toolsEnabled, bool tamilMode, bool isDarkTheme, String geminiModel, bool memoryEnabled, bool mcpEnabled, String responseStyle, String responseTone, String customInstructions
 });
 
 
@@ -62,16 +62,27 @@ class _$SettingsStateCopyWithImpl<$Res>
 
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? customInstructions = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? responseStyle = null,Object? responseTone = null,Object? customInstructions = null,}) {
   return _then(_self.copyWith(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
-as String,toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
-as bool,tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
-as bool,isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
-as bool,geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
-as String,memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
-as bool,mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
-as bool,customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
+as String,
+toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
+as bool,
+isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
+as bool,
+geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
+as String,
+memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
+as String,
+responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
+as String,
+customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -157,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String customInstructions)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String responseStyle,  String responseTone,  String customInstructions)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SettingsState() when $default != null:
-return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.customInstructions);case _:
+return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.responseStyle,_that.responseTone,_that.customInstructions);case _:
   return orElse();
 
 }
@@ -178,10 +189,10 @@ return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDark
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String customInstructions)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String responseStyle,  String responseTone,  String customInstructions)  $default,) {final _that = this;
 switch (_that) {
 case _SettingsState():
-return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.customInstructions);case _:
+return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.responseStyle,_that.responseTone,_that.customInstructions);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,7 +224,7 @@ return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDark
 
 
 class _SettingsState implements SettingsState {
-  const _SettingsState({required this.backendUrl, required this.toolsEnabled, required this.tamilMode, required this.isDarkTheme, required this.geminiModel, required this.memoryEnabled, required this.mcpEnabled, this.customInstructions = ''});
+  const _SettingsState({required this.backendUrl, required this.toolsEnabled, required this.tamilMode, required this.isDarkTheme, required this.geminiModel, required this.memoryEnabled, required this.mcpEnabled, required this.responseStyle, required this.responseTone, this.customInstructions = ''});
   
 
 @override final  String backendUrl;
@@ -223,6 +234,8 @@ class _SettingsState implements SettingsState {
 @override final  String geminiModel;
 @override final  bool memoryEnabled;
 @override final  bool mcpEnabled;
+@override final  String responseStyle;
+@override final  String responseTone;
 @override@JsonKey() final  String customInstructions;
 
 /// Create a copy of SettingsState
@@ -235,16 +248,16 @@ _$SettingsStateCopyWith<_SettingsState> get copyWith => __$SettingsStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.toolsEnabled, toolsEnabled) || other.toolsEnabled == toolsEnabled)&&(identical(other.tamilMode, tamilMode) || other.tamilMode == tamilMode)&&(identical(other.isDarkTheme, isDarkTheme) || other.isDarkTheme == isDarkTheme)&&(identical(other.geminiModel, geminiModel) || other.geminiModel == geminiModel)&&(identical(other.memoryEnabled, memoryEnabled) || other.memoryEnabled == memoryEnabled)&&(identical(other.mcpEnabled, mcpEnabled) || other.mcpEnabled == mcpEnabled)&&(identical(other.customInstructions, customInstructions) || other.customInstructions == customInstructions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.backendUrl, backendUrl) || other.backendUrl == backendUrl)&&(identical(other.toolsEnabled, toolsEnabled) || other.toolsEnabled == toolsEnabled)&&(identical(other.tamilMode, tamilMode) || other.tamilMode == tamilMode)&&(identical(other.isDarkTheme, isDarkTheme) || other.isDarkTheme == isDarkTheme)&&(identical(other.geminiModel, geminiModel) || other.geminiModel == geminiModel)&&(identical(other.memoryEnabled, memoryEnabled) || other.memoryEnabled == memoryEnabled)&&(identical(other.mcpEnabled, mcpEnabled) || other.mcpEnabled == mcpEnabled)&&(identical(other.responseStyle, responseStyle) || other.responseStyle == responseStyle)&&(identical(other.responseTone, responseTone) || other.responseTone == responseTone)&&(identical(other.customInstructions, customInstructions) || other.customInstructions == customInstructions));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,backendUrl,toolsEnabled,tamilMode,isDarkTheme,geminiModel,memoryEnabled,mcpEnabled,customInstructions);
+int get hashCode => Object.hash(runtimeType,backendUrl,toolsEnabled,tamilMode,isDarkTheme,geminiModel,memoryEnabled,mcpEnabled,responseStyle,responseTone,customInstructions);
 
 @override
 String toString() {
-  return 'SettingsState(backendUrl: $backendUrl, toolsEnabled: $toolsEnabled, tamilMode: $tamilMode, isDarkTheme: $isDarkTheme, geminiModel: $geminiModel, memoryEnabled: $memoryEnabled, mcpEnabled: $mcpEnabled, customInstructions: $customInstructions)';
+  return 'SettingsState(backendUrl: $backendUrl, toolsEnabled: $toolsEnabled, tamilMode: $tamilMode, isDarkTheme: $isDarkTheme, geminiModel: $geminiModel, memoryEnabled: $memoryEnabled, mcpEnabled: $mcpEnabled, responseStyle: $responseStyle, responseTone: $responseTone, customInstructions: $customInstructions)';
 }
 
 
@@ -255,7 +268,7 @@ abstract mixin class _$SettingsStateCopyWith<$Res> implements $SettingsStateCopy
   factory _$SettingsStateCopyWith(_SettingsState value, $Res Function(_SettingsState) _then) = __$SettingsStateCopyWithImpl;
 @override @useResult
 $Res call({
- String backendUrl, bool toolsEnabled, bool tamilMode, bool isDarkTheme, String geminiModel, bool memoryEnabled, bool mcpEnabled, String customInstructions
+ String backendUrl, bool toolsEnabled, bool tamilMode, bool isDarkTheme, String geminiModel, bool memoryEnabled, bool mcpEnabled, String responseStyle, String responseTone, String customInstructions
 });
 
 
@@ -272,16 +285,27 @@ class __$SettingsStateCopyWithImpl<$Res>
 
 /// Create a copy of SettingsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? customInstructions = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? responseStyle = null,Object? responseTone = null,Object? customInstructions = null,}) {
   return _then(_SettingsState(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
-as String,toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
-as bool,tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
-as bool,isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
-as bool,geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
-as String,memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
-as bool,mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
-as bool,customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
+as String,
+toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
+as bool,
+isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
+as bool,
+geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
+as String,
+memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
+responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
+as String,
+responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
+as String,
+customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

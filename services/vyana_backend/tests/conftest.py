@@ -16,6 +16,8 @@ def mock_env_vars():
         'GOOGLE_CLIENT_SECRET': 'test_client_secret',
         'GOOGLE_REDIRECT_URI': 'http://localhost:8080/callback',
         'SECRET_KEY': 'test_secret_key',
+        'SUPABASE_URL': 'https://test.supabase.co',
+        'SUPABASE_KEY': 'test_supabase_key',
         'DEBUG': 'true',
     }
     with patch.dict(os.environ, env_vars, clear=False):

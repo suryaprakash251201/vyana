@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/core/theme.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 final unreadProvider = FutureProvider<int>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
@@ -362,6 +363,7 @@ class _EmailDetailSheet extends ConsumerStatefulWidget {
 
 class _EmailDetailSheetState extends ConsumerState<_EmailDetailSheet> {
   late Future<Map<String, dynamic>> _detailsFuture;
+  bool _showHtml = true;
 
   @override
   void initState() {
@@ -433,10 +435,33 @@ class _EmailDetailSheetState extends ConsumerState<_EmailDetailSheet> {
                           const Gap(20),
                           const Divider(),
                           const Gap(20),
-                          SelectableText(
-                            data['body'] ?? 'No Content',
-                            style: const TextStyle(fontSize: 15, height: 1.5),
+                          Row(
+                            children: [
+                              Text('View', style: Theme.of(context).textTheme.labelMedium),
+                              const Gap(8),
+                              ChoiceChip(
+                                label: const Text('HTML'),
+                                selected: _showHtml,
+                                onSelected: (_) => setState(() => _showHtml = true),
+                              ),
+                              const Gap(6),
+                              ChoiceChip(
+                                label: const Text('Plain'),
+                                selected: !_showHtml,
+                                onSelected: (_) => setState(() => _showHtml = false),
+                              ),
+                            ],
                           ),
+                          const Gap(12),
+                          if (_showHtml && (data['html_body'] ?? '').toString().isNotEmpty)
+                            Html(
+                              data: data['html_body'] ?? '',
+                            )
+                          else
+                            SelectableText(
+                              data['body'] ?? 'No Content',
+                              style: const TextStyle(fontSize: 15, height: 1.5),
+                            ),
                         ],
                       ),
                     );

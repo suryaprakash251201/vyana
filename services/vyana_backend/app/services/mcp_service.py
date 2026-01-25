@@ -140,6 +140,24 @@ class MCPService:
                 "tools_count": len(connection.tools) if connection else 0
             })
         return servers
+
+    def add_server(self, name: str, url: str) -> dict:
+        """Add a new dynamic MCP server"""
+        if name in KNOWN_MCP_SERVERS:
+            return {"success": False, "error": f"Server with name '{name}' already exists"}
+            
+        config = MCPServerConfig(
+            name=name,
+            display_name=name.title(),
+            url=url,
+            auth_url=None,
+            requires_api_key=False,
+            icon="🔌",
+            description=f"Custom MCP server at {url}"
+        )
+        KNOWN_MCP_SERVERS[name] = config
+        return {"success": True, "server": config.__dict__}
+
     
     async def connect(self, name: str, auth_token: Optional[str] = None, mode: str = "mcp") -> dict:
         """

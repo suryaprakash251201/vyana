@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'mcp_provider.dart';
+part of 'contacts_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -8,76 +8,68 @@ part of 'mcp_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider for fetching available MCP servers
 
-@ProviderFor(mcpServers)
-final mcpServersProvider = McpServersProvider._();
+@ProviderFor(contacts)
+final contactsProvider = ContactsProvider._();
 
-/// Provider for fetching available MCP servers
-
-final class McpServersProvider
+final class ContactsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<MCPServer>>,
-          List<MCPServer>,
-          FutureOr<List<MCPServer>>
+          AsyncValue<List<Contact>>,
+          List<Contact>,
+          FutureOr<List<Contact>>
         >
-    with $FutureModifier<List<MCPServer>>, $FutureProvider<List<MCPServer>> {
-  /// Provider for fetching available MCP servers
-  McpServersProvider._()
+    with $FutureModifier<List<Contact>>, $FutureProvider<List<Contact>> {
+  ContactsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'mcpServersProvider',
+        name: r'contactsProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$mcpServersHash();
+  String debugGetCreateSourceHash() => _$contactsHash();
 
   @$internal
   @override
-  $FutureProviderElement<List<MCPServer>> $createElement(
+  $FutureProviderElement<List<Contact>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<MCPServer>> create(Ref ref) {
-    return mcpServers(ref);
+  FutureOr<List<Contact>> create(Ref ref) {
+    return contacts(ref);
   }
 }
 
-String _$mcpServersHash() => r'780bf37b8a16c1c949d2fa8d12317c5aa7cd3a4b';
+String _$contactsHash() => r'528f080aa71e7afa518ea8fd91172e2e97e4439e';
 
-/// Provider for MCP connection actions
+@ProviderFor(ContactController)
+final contactControllerProvider = ContactControllerProvider._();
 
-@ProviderFor(MCPConnections)
-final mCPConnectionsProvider = MCPConnectionsProvider._();
-
-/// Provider for MCP connection actions
-final class MCPConnectionsProvider
-    extends $NotifierProvider<MCPConnections, AsyncValue<void>> {
-  /// Provider for MCP connection actions
-  MCPConnectionsProvider._()
+final class ContactControllerProvider
+    extends $NotifierProvider<ContactController, AsyncValue<void>> {
+  ContactControllerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'mCPConnectionsProvider',
+        name: r'contactControllerProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$mCPConnectionsHash();
+  String debugGetCreateSourceHash() => _$contactControllerHash();
 
   @$internal
   @override
-  MCPConnections create() => MCPConnections();
+  ContactController create() => ContactController();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AsyncValue<void> value) {
@@ -88,11 +80,9 @@ final class MCPConnectionsProvider
   }
 }
 
-String _$mCPConnectionsHash() => r'a49fa4045467cd4202240ca17343c9b79da8fc92';
+String _$contactControllerHash() => r'c4a9eeeed55d2b3d4df480c48c5162b28533e58d';
 
-/// Provider for MCP connection actions
-
-abstract class _$MCPConnections extends $Notifier<AsyncValue<void>> {
+abstract class _$ContactController extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
   @$mustCallSuper
   @override

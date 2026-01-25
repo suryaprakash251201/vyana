@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +12,20 @@ ApiClient apiClient(Ref ref) {
   final settingsAsync = ref.watch(settingsProvider);
   // Default to empty if loading, handle gracefully in UI or wait for load
   final baseUrl = settingsAsync.value?.backendUrl ?? '';
-  return ApiClient(baseUrl: baseUrl);
+  final client = ApiClient(baseUrl: baseUrl);
+  ref.onDispose(client.dispose);
+  return client;
+}
+
+class ApiException implements Exception {
+  final int? statusCode;
+  final String message;
+  final dynamic details;
+
+  ApiException({this.statusCode, required this.message, this.details});
+
+  @override
+  String toString() => 'ApiException(statusCode: $statusCode, message: $message, details: $details)';
 }
 
 class ApiClient {
@@ -20,54 +34,91 @@ class ApiClient {
 
   ApiClient({required this.baseUrl});
 
-  Uri _uri(String path) {
-    // Handle cases where baseUrl might have trailing slash
-    final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl; 
+  Uri resolve(String path, {String? fallbackBaseUrl}) {
+    final resolvedBase = (baseUrl.isNotEmpty ? baseUrl : (fallbackBaseUrl ?? '')).trim();
+    if (resolvedBase.isEmpty) {
+      throw ApiException(message: 'Backend URL is not configured');
+    }
+    final normalizedBase = resolvedBase.endsWith('/')
+        ? resolvedBase.substring(0, resolvedBase.length - 1)
+        : resolvedBase;
     return Uri.parse('$normalizedBase$path');
   }
 
   Future<dynamic> get(String path) async {
-    final response = await _client.get(_uri(path)).timeout(const Duration(seconds: 10));
-    return _handleResponse(response);
+    try {
+      final response = await _client.get(resolve(path)).timeout(const Duration(seconds: 10));
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(message: 'Request timed out');
+    }
   }
 
   Future<dynamic> post(String path, {dynamic body}) async {
-    final response = await _client.post(
-      _uri(path),
-      headers: {'Content-Type': 'application/json'},
-      body: body != null ? jsonEncode(body) : null,
-    ).timeout(const Duration(seconds: 60)); // Increased for AI responses
-    return _handleResponse(response);
+    try {
+      final response = await _client.post(
+        resolve(path),
+        headers: {'Content-Type': 'application/json'},
+        body: body != null ? jsonEncode(body) : null,
+      ).timeout(const Duration(seconds: 60)); // Increased for AI responses
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(message: 'Request timed out');
+    }
   }
   
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
-      return jsonDecode(response.body);
+      return _tryDecodeJson(response.body);
     } else {
-      throw Exception('API Error ${response.statusCode}: ${response.body}');
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'API Error ${response.statusCode}',
+        details: _tryDecodeJson(response.body),
+      );
+    }
+  }
+
+  dynamic _tryDecodeJson(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return body;
     }
   }
 
   Future<dynamic> put(String path, {dynamic body}) async {
-    final response = await _client.put(
-      _uri(path),
-      headers: {'Content-Type': 'application/json'},
-      body: body != null ? jsonEncode(body) : null,
-    ).timeout(const Duration(seconds: 10));
-    return _handleResponse(response);
+    try {
+      final response = await _client.put(
+        resolve(path),
+        headers: {'Content-Type': 'application/json'},
+        body: body != null ? jsonEncode(body) : null,
+      ).timeout(const Duration(seconds: 10));
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(message: 'Request timed out');
+    }
   }
 
   Future<dynamic> delete(String path, {dynamic body}) async {
-    final request = http.Request('DELETE', _uri(path));
-    request.headers['Content-Type'] = 'application/json';
-    if (body != null) {
-      request.body = jsonEncode(body);
+    try {
+      final request = http.Request('DELETE', resolve(path));
+      request.headers['Content-Type'] = 'application/json';
+      if (body != null) {
+        request.body = jsonEncode(body);
+      }
+      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 10));
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(message: 'Request timed out');
     }
-    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 10));
-    final response = await http.Response.fromStream(streamedResponse);
-    return _handleResponse(response);
   }
   
   // Streaming helper will be handled separately in Chat Repository as it requires different handling
+
+  void dispose() {
+    _client.close();
+  }
 }

@@ -33,6 +33,22 @@ async def list_servers():
     return {"servers": mcp_service.get_known_servers()}
 
 
+class AddServerRequest(BaseModel):
+    name: str
+    url: str
+
+
+@router.post("/servers")
+async def add_server(request: AddServerRequest):
+    """
+    Add a new dynamic MCP server.
+    """
+    result = mcp_service.add_server(request.name, request.url)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+
 @router.get("/connections")
 async def list_connections():
     """
@@ -94,18 +110,27 @@ async def zerodha_auth():
     if settings.ZERODHA_API_KEY:
         # Use Kite Connect OAuth
         auth_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={settings.ZERODHA_API_KEY}"
+        if settings.ZERODHA_REDIRECT_URI:
+            auth_url += f"&redirect_uri={settings.ZERODHA_REDIRECT_URI}"
         return {"auth_url": auth_url, "mode": "kite_connect"}
     else:
         # Use hosted MCP (no API key needed)
         config = KNOWN_MCP_SERVERS.get("zerodha")
         if not config:
             raise HTTPException(status_code=404, detail="Zerodha MCP not configured")
-        return {"auth_url": config.auth_url, "mode": "hosted_mcp"}
+        auth_url = config.auth_url
+        if settings.ZERODHA_REDIRECT_URI:
+            # Some OAuth providers require redirect_uri in query
+            separator = "&" if "?" in auth_url else "?"
+            auth_url = f"{auth_url}{separator}redirect_uri={settings.ZERODHA_REDIRECT_URI}"
+        return {"auth_url": auth_url, "mode": "hosted_mcp"}
 
 
 @router.get("/zerodha/callback")
 async def zerodha_callback(
     request_token: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
+    access_token: Optional[str] = Query(None),
     action: Optional[str] = Query(None),
     status: Optional[str] = Query(None)
 ):
@@ -118,7 +143,8 @@ async def zerodha_callback(
     import logging
     logger = logging.getLogger(__name__)
     
-    logger.info(f"Zerodha callback received: action={action}, status={status}, token={request_token[:10] if request_token else 'None'}...")
+    effective_token = request_token or token or access_token
+    logger.info(f"Zerodha callback received: action={action}, status={status}, token={effective_token[:10] if effective_token else 'None'}...")
     
     if action == "login" and status == "cancelled":
         return HTMLResponse("""
@@ -131,8 +157,8 @@ async def zerodha_callback(
         </html>
         """)
     
-    if not request_token:
-        raise HTTPException(status_code=400, detail="Missing request_token. Please initiate login from the app.")
+    if not effective_token:
+        raise HTTPException(status_code=400, detail="Missing request token. Please initiate login from the app.")
     
     # If using Kite Connect API, exchange request_token for access_token
     if settings.ZERODHA_API_KEY and settings.ZERODHA_API_SECRET:
@@ -143,7 +169,7 @@ async def zerodha_callback(
             
             # Generate checksum: SHA256(api_key + request_token + api_secret)
             checksum = hashlib.sha256(
-                (settings.ZERODHA_API_KEY + request_token + settings.ZERODHA_API_SECRET).encode()
+                (settings.ZERODHA_API_KEY + effective_token + settings.ZERODHA_API_SECRET).encode()
             ).hexdigest()
             
             logger.info(f"Generated checksum for token exchange")
@@ -154,7 +180,7 @@ async def zerodha_callback(
                     "https://api.kite.trade/session/token",
                     data={
                         "api_key": settings.ZERODHA_API_KEY,
-                        "request_token": request_token,
+                        "request_token": effective_token,
                         "checksum": checksum
                     },
                     headers={
@@ -245,7 +271,7 @@ async def zerodha_callback(
             """, status_code=500)
     else:
         # Hosted MCP mode - just use request_token directly
-        result = await mcp_service.connect("zerodha", request_token)
+        result = await mcp_service.connect("zerodha", effective_token)
         
         if result.get("success"):
             return HTMLResponse(f"""

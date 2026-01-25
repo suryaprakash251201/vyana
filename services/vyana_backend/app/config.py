@@ -1,4 +1,4 @@
-import os
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     
     # SECURITY: No default - must be set in .env for production
-    SECRET_KEY: str = ""
+    SECRET_KEY: str
     
     # CORS Configuration - comma-separated origins for production security
     # Example: "http://localhost:3000,https://myapp.com"
@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3-pro-preview"
     GROQ_API_KEY: str
 
-    SUPABASE_URL: str = ""  # Required: set in .env
-    SUPABASE_KEY: str = ""  # Required: set in .env
+    SUPABASE_URL: str  # Required: set in .env
+    SUPABASE_KEY: str  # Required: set in .env
 
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     
     # Environment indicator
     DEBUG: bool = True
+
+    @field_validator("SECRET_KEY", "SUPABASE_URL", "SUPABASE_KEY")
+    @classmethod
+    def _non_empty(cls, value: str, info: ValidationInfo) -> str:
+        if not value or not value.strip():
+            raise ValueError(f"{info.field_name} must be set")
+        return value
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra='ignore')
 
