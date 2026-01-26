@@ -77,7 +77,7 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "get_calendar_today",
-                    "description": "Gets calendar events for today",
+                    "description": "Gets calendar events for today only. Use get_calendar_events for other dates.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -89,8 +89,22 @@ class GroqClient:
             {
                 "type": "function",
                 "function": {
+                    "name": "get_calendar_events",
+                    "description": "Gets calendar events for a specific date. Use this when user asks about events on a specific day like 'tomorrow', 'next Monday', or a specific date. Convert the date to YYYY-MM-DD format.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "date": {"type": "string", "description": "Date in YYYY-MM-DD format (e.g., 2026-01-27 for tomorrow)"}
+                        },
+                        "required": ["date"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "get_calendar_range",
-                    "description": "Gets upcoming calendar events for the next N days",
+                    "description": "Gets upcoming calendar events for the next N days starting from today",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -484,6 +498,15 @@ class GroqClient:
                 return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
             elif function_name == "get_calendar_today":
                 return str(calendar_service.get_events())
+            elif function_name == "get_calendar_events":
+                # Get events for a specific date
+                date_str = args.get("date")
+                if date_str:
+                    events = calendar_service.get_events(start_date_str=date_str, end_date_str=date_str)
+                    if isinstance(events, list) and len(events) > 0 and isinstance(events[0], dict) and events[0].get("error"):
+                        return json.dumps({"error": "Google Calendar not connected. Please go to Settings > Connect Google Account."})
+                    return json.dumps(events)
+                return json.dumps({"error": "Date parameter required"})
             elif function_name == "get_calendar_range":
                 days = int(args.get("days", 7))
                 events = calendar_service.get_events()

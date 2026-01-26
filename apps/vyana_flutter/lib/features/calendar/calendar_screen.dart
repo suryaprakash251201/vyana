@@ -256,12 +256,46 @@ class CalendarScreen extends ConsumerWidget {
                       children: [
                         const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                         const Gap(8),
-                        Text(
-                          "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                           style: theme.textTheme.titleLarge?.copyWith(
-                             fontWeight: FontWeight.bold,
-                             fontSize: 18,
-                           ),
+                        GestureDetector(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: theme.copyWith(
+                                    colorScheme: theme.colorScheme.copyWith(
+                                      primary: AppColors.primaryPurple,
+                                      onPrimary: Colors.white,
+                                      surface: theme.colorScheme.surface,
+                                      onSurface: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              ref.read(selectedDateProvider.notifier).set(picked);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryPurple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                               style: theme.textTheme.titleLarge?.copyWith(
+                                 fontWeight: FontWeight.bold,
+                                 fontSize: 18,
+                                 color: AppColors.primaryPurple,
+                               ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
