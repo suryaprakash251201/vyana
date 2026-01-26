@@ -26,17 +26,43 @@ class _ModelOption {
 }
 
 const List<_ModelOption> _groqModels = [
+  // Tool Calling Models (Recommended)
+  _ModelOption(
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT OSS 20B',
+    description: 'Excellent tool calling support. Recommended for Vyana.',
+    badge: 'Recommended',
+  ),
+  _ModelOption(
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT OSS 120B',
+    description: 'Highest quality with great tool calling support.',
+    badge: 'Quality',
+  ),
+  _ModelOption(
+    id: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    name: 'Llama 4 Scout',
+    description: 'Latest Llama model with strong tool calling.',
+    badge: 'New',
+  ),
+  _ModelOption(
+    id: 'qwen/qwen3-32b',
+    name: 'Qwen 3 32B',
+    description: 'Strong reasoning and tool calling capabilities.',
+    badge: 'Balanced',
+  ),
+  _ModelOption(
+    id: 'moonshotai/kimi-k2-instruct',
+    name: 'Kimi K2',
+    description: 'Advanced model with excellent tool use.',
+    badge: 'Quality',
+  ),
+  // Legacy Models
   _ModelOption(
     id: 'llama-3.1-8b-instant',
     name: 'Llama 3.1 8B',
     description: 'Fast, low cost, great for quick tasks and chat.',
     badge: 'Fast',
-  ),
-  _ModelOption(
-    id: 'llama-3.1-70b-versatile',
-    name: 'Llama 3.1 70B',
-    description: 'Higher quality responses with strong reasoning.',
-    badge: 'Balanced',
   ),
   _ModelOption(
     id: 'llama-3.3-70b-versatile',
@@ -55,36 +81,6 @@ const List<_ModelOption> _groqModels = [
     name: 'Gemma 2 9B',
     description: 'Compact and efficient for daily assistant tasks.',
     badge: 'Compact',
-  ),
-  _ModelOption(
-    id: 'gemma2-27b-it',
-    name: 'Gemma 2 27B',
-    description: 'Higher quality for detailed answers and summaries.',
-    badge: 'Quality',
-  ),
-  _ModelOption(
-    id: 'llama-3.2-1b-preview',
-    name: 'Llama 3.2 1B',
-    description: 'Ultra-fast, lightweight model for simple queries.',
-    badge: 'Ultra-fast',
-  ),
-  _ModelOption(
-    id: 'llama-3.2-3b-preview',
-    name: 'Llama 3.2 3B',
-    description: 'Lightweight model with better quality than 1B.',
-    badge: 'Fast',
-  ),
-  _ModelOption(
-    id: 'llama-3.2-11b-vision-preview',
-    name: 'Llama 3.2 11B Vision',
-    description: 'Vision-capable model (if supported by your backend).',
-    badge: 'Vision',
-  ),
-  _ModelOption(
-    id: 'llama-3.2-90b-vision-preview',
-    name: 'Llama 3.2 90B Vision',
-    description: 'High-quality vision model for advanced reasoning.',
-    badge: 'Vision+',
   ),
 ];
 
