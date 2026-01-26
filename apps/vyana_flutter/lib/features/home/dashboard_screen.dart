@@ -308,7 +308,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Widget _buildHeroCard(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -319,7 +319,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryPurple.withOpacity(0.4),
@@ -363,7 +363,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 children: [
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -372,13 +372,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.auto_awesome,
-                            color: Colors.white, size: 16),
+                            color: Colors.white, size: 14),
                         const Gap(4),
                         const Text(
                           'AI Assistant',
                           style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -386,13 +386,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ],
               ),
-              const Gap(16),
+              const Gap(12),
               SizedBox(
-                height: 32,
+                height: 28, // Reduced height
                 child: DefaultTextStyle(
-                  style: theme.textTheme.headlineSmall!.copyWith(
+                  style: theme.textTheme.titleLarge!.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22, // Slightly smaller font
                     letterSpacing: -0.5,
                   ),
                   child: AnimatedTextKit(
@@ -407,16 +408,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ),
               ),
-              const Gap(12),
+              const Gap(8),
               Text(
                 "Manage tasks, check calendar, draft emails, and more.",
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
+                  fontSize: 13,
                   height: 1.4,
                 ),
               ),
-              const Gap(20),
+              const Gap(16),
               // Quick prompt buttons
               Wrap(
                 spacing: 8,
@@ -441,24 +442,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget _buildPromptChip(String label, IconData icon) {
     return InkWell(
       onTap: () => context.go('/chat'),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 14),
+            Icon(icon, color: Colors.white, size: 13),
             const Gap(6),
             Text(
               label,
               style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500),
             ),
           ],
@@ -477,39 +478,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ).animate().fadeIn(delay: 200.ms),
         const Gap(12),
-        Row(
+        Column(
           children: [
-            Expanded(
-                child: _buildQuickActionCard(
-              'New Task',
-              Icons.add_task,
-              AppColors.successGreen,
-              () => context.go('/tasks'),
-            )),
-            const Gap(12),
-            Expanded(
-                child: _buildQuickActionCard(
-              'Schedule',
-              Icons.event,
-              AppColors.accentPink,
-              () => context.go('/calendar'),
-            )),
-            const Gap(12),
-            Expanded(
-                child: _buildQuickActionCard(
-              'Compose',
-              Icons.edit_note,
-              AppColors.accentCyan,
-              () => context.go('/mail'),
-            )),
-            const Gap(12),
-            Expanded(
-                child: _buildQuickActionCard(
-              'Contacts',
-              Icons.contacts,
-              AppColors.warmOrange,
-              () => context.go('/tools'),
-            )),
+            Row(
+              children: [
+                Expanded(
+                    child: _buildQuickActionCard(
+                  'New Task',
+                  Icons.add_task,
+                  AppColors.successGreen,
+                  () => context.go('/tasks'),
+                )),
+                const Gap(16),
+                Expanded(
+                    child: _buildQuickActionCard(
+                  'Schedule',
+                  Icons.event,
+                  AppColors.accentPink,
+                  () => context.go('/calendar'),
+                )),
+              ],
+            ),
+            const Gap(16),
+            Row(
+              children: [
+                Expanded(
+                    child: _buildQuickActionCard(
+                  'Compose',
+                  Icons.edit_note,
+                  AppColors.accentCyan,
+                  () => context.go('/mail'),
+                )),
+                const Gap(16),
+                Expanded(
+                    child: _buildQuickActionCard(
+                  'Contacts',
+                  Icons.contacts,
+                  AppColors.warmOrange,
+                  () => context.go('/tools'),
+                )),
+              ],
+            ),
           ],
         ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
       ],

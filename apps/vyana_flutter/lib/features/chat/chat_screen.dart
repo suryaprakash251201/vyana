@@ -253,20 +253,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     });
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       body: Container(
         decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
                     AppColors.darkBackground,
-                    AppColors.darkSurface,
+                    const Color(0xFF1E1E2E), // Slightly lighter dark
                   ]
                 : [
-                    AppColors.primaryPurple.withOpacity(0.06),
-                    AppColors.accentPink.withOpacity(0.03),
-                    theme.scaffoldBackgroundColor,
+                    AppColors.primaryPurple.withOpacity(0.05),
+                    AppColors.accentPink.withOpacity(0.05),
+                    Colors.white,
                   ],
             stops: isDark ? [0.0, 1.0] : [0.0, 0.4, 1.0],
           ),
@@ -284,9 +286,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     : _buildMessageList(chatState),
               ),
 
-              // Loading indicator
-              if (chatState.isLoading && chatState.messages.isNotEmpty)
-                _buildLoadingIndicator(),
+              // Loading indicator (removed bottom floating pill)
+
 
               // Input Area
               _buildInputArea(theme, chatState),
@@ -299,34 +300,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Widget _buildHeader(ThemeData theme, ChatState chatState) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withOpacity(0.8),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.withOpacity(0.1),
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      color: Colors.transparent, // cleaner look
       child: Row(
         children: [
-          // Logo with gradient border
+          // Logo
           Container(
-            padding: const EdgeInsets.all(2),
+            height: 40,
+            width: 40,
             decoration: BoxDecoration(
               gradient: AppColors.primaryGradient,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryPurple.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: AppColors.primaryPurple.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            padding: const EdgeInsets.all(2),
             child: Container(
-              height: 38,
-              width: 38,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -339,14 +333,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                     decoration: const BoxDecoration(
                       gradient: AppColors.primaryGradient,
                     ),
-                    child: const Icon(Icons.auto_awesome,
-                        color: Colors.white, size: 20),
                   ),
                 ),
               ),
             ),
           ).animate().fade().scale(duration: 400.ms),
-          const Gap(12),
+          
+          const Gap(16),
+          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,30 +348,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 Text(
                   'Vyana',
                   style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.primary,
-                    letterSpacing: -0.5,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
                 ),
-                Text(
-                  chatState.isLoading ? 'Thinking...' : 'AI Assistant',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: chatState.isLoading
-                        ? AppColors.primaryPurple
-                        : Colors.grey.shade500,
-                    fontWeight: FontWeight.w500,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: Text(
+                    chatState.isLoading ? 'Thinking...' : 'AI Assistant',
+                    key: ValueKey(chatState.isLoading),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: chatState.isLoading
+                          ? AppColors.primaryPurple
+                          : Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
             ),
           ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1),
-          // Retry button if pending
-          if (chatState.pendingCount > 0) ...[
+
+          // Actions
+          if (chatState.pendingCount > 0)
             _buildRetryButton(chatState),
-            const Gap(8),
-          ],
-          // New chat button
+            
+          const Gap(12),
           _buildNewChatButton(theme),
         ],
       ),
@@ -432,43 +429,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   Widget _buildNewChatButton(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return IconButton(
+      onPressed: _createNewChat,
+      style: IconButton.styleFrom(
+        backgroundColor: theme.colorScheme.surfaceContainerHigh,
+        hoverColor: AppColors.primaryPurple.withOpacity(0.1),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: _createNewChat,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_rounded, size: 18, color: Colors.white),
-                Gap(4),
-                Text(
-                  'New',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      icon: Icon(Icons.add, color: theme.colorScheme.onSurface),
+      tooltip: 'New Chat',
     ).animate().fadeIn(delay: 200.ms).scale();
   }
 
@@ -478,60 +446,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       !(m.isStreaming && m.content.isEmpty)
     ).toList();
     
+    final showThinkingBubble = chatState.isLoading && 
+        (messagesToShow.isEmpty || messagesToShow.last.role != 'assistant' || messagesToShow.last.content.isEmpty);
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: messagesToShow.length,
+      itemCount: messagesToShow.length + (showThinkingBubble ? 1 : 0),
       itemBuilder: (context, index) {
+        if (showThinkingBubble && index == messagesToShow.length) {
+          return _buildThinkingBubble().animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
+        }
+
         final isLast = index == messagesToShow.length - 1;
         return ChatBubble(message: messagesToShow[index])
-            .animate()
+            .animate() 
             .fadeIn(duration: 300.ms)
-            .slideY(begin: isLast ? 0.15 : 0.05, end: 0);
+            .slideY(
+              begin: 0.3, 
+              end: 0, 
+              curve: Curves.easeOutBack, 
+              duration: 400.ms
+            );
       },
     );
   }
 
-  Widget _buildLoadingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primaryPurple.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primaryPurple,
-                  ),
-                ),
-                const Gap(10),
-                Text(
-                  'Vyana is typing',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primaryPurple,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Gap(4),
-                _buildTypingDots(),
-              ],
-            ),
+  Widget _buildThinkingBubble() {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+            bottomLeft: Radius.circular(4),
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Image.asset('assets/images/vyana_logo.png'), 
+            )
+            .animate(onPlay: (c) => c.repeat())
+            .shimmer(duration: 1.seconds, color: Colors.white.withOpacity(0.8))
+            .then(delay: 1.seconds),
+            
+            const Gap(10),
+            
+            Text(
+              "Thinking",
+              style: TextStyle(
+                color: AppColors.primaryPurple.withOpacity(0.8),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Gap(4),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _buildTypingDots(),
+            ),
+          ],
+        ),
       ),
-    ).animate().fadeIn();
+    );
   }
+
+
 
   Widget _buildTypingDots() {
     return Row(
@@ -557,37 +555,76 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Widget _buildInputArea(ThemeData theme, ChatState chatState) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 800),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: _isListening 
+                  ? AppColors.errorRed.withOpacity(0.5) 
+                  : theme.colorScheme.outline.withOpacity(0.1),
+            ),
           ),
-        ],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Voice Button
-          _buildVoiceButton(theme),
-          const Gap(10),
-          // Text Input
-          Expanded(
-            child: _buildTextField(theme),
-          ),
-          const Gap(10),
-          // Send Button
-          _buildSendButton(theme, chatState),
-        ],
-      ),
-    ).animate().slideY(begin: 0.5, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
-  }
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Voice Button (Left)
+              _buildVoiceButton(theme),
+              
+              // Text Area
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: _isListening
+                          ? "Listening..."
+                          : (_isProcessingAudio ? "Processing..." : "Ask anything..."),
+                      hintStyle: TextStyle(
+                        color: _isListening
+                            ? AppColors.errorRed
+                            : Colors.grey.shade400,
+                        fontSize: 16,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 16),
+                    onSubmitted: (_) => _sendMessage(),
+                    enabled: !_isListening && !_isProcessingAudio,
+                    onTap: () => setState(() {}),
+                  ),
+                ),
+              ),
 
-  Widget _buildVoiceButton(ThemeData theme) {
+              // Send Button (Right)
+              _buildSendButton(theme, chatState),
+            ],
+          ),
+        ),
+      ),
+    ).animate().slideY(begin: 1, duration: 400.ms, curve: Curves.easeOutQuint);
+  }
+  
+    Widget _buildVoiceButton(ThemeData theme) {
     return GestureDetector(
       onLongPressStart: (_) => _startRecording(),
       onLongPressEnd: (_) => _stopRecording(),
@@ -603,98 +640,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         animation: _pulseController,
         builder: (context, child) {
           return Container(
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.all(4),
+            height: 44,
+            width: 44,
             decoration: BoxDecoration(
               color: _isListening
-                  ? AppColors.errorRed
-                  : theme.colorScheme.surface,
+                  ? AppColors.errorRed.withOpacity(0.1)
+                  : Colors.transparent,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: _isListening
-                    ? Colors.transparent
-                    : AppColors.primaryPurple.withOpacity(0.3),
-                width: 1.5,
-              ),
-              boxShadow: _isListening
-                  ? [
-                      BoxShadow(
-                        color: AppColors.errorRed
-                            .withOpacity(0.3 + (_pulseController.value * 0.2)),
-                        blurRadius: 12 + (_pulseController.value * 8),
-                        spreadRadius: _pulseController.value * 4,
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
             ),
             child: _isProcessingAudio
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primaryPurple,
+                ? const Center(
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
                 : Icon(
                     _isListening ? Icons.mic : Icons.mic_none_rounded,
-                    color: _isListening ? Colors.white : AppColors.primaryPurple,
+                    color: _isListening ? AppColors.errorRed : Colors.grey.shade600,
                     size: 24,
                   ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildTextField(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: _focusNode.hasFocus
-              ? AppColors.primaryPurple.withOpacity(0.5)
-              : Colors.grey.withOpacity(0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _focusNode.hasFocus
-                ? AppColors.primaryPurple.withOpacity(0.1)
-                : Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _controller,
-        focusNode: _focusNode,
-        maxLines: 4,
-        minLines: 1,
-        decoration: InputDecoration(
-          hintText: _isListening
-              ? "Listening..."
-              : (_isProcessingAudio ? "Processing..." : "Message Vyana..."),
-          hintStyle: TextStyle(
-            color: _isListening
-                ? AppColors.primaryPurple
-                : Colors.grey.shade400,
-            fontSize: 15,
-          ),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        ),
-        style: const TextStyle(fontSize: 15),
-        onSubmitted: (_) => _sendMessage(),
-        enabled: !_isListening && !_isProcessingAudio,
-        onTap: () => setState(() {}),
       ),
     );
   }
@@ -708,16 +677,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(4),
+          height: 44,
+          width: 44,
           decoration: BoxDecoration(
             gradient: canSend ? AppColors.primaryGradient : null,
-            color: canSend ? null : Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(20),
+            color: canSend ? null : Colors.transparent, // Transparant when disabled for cleaner look
+            shape: BoxShape.circle,
             boxShadow: canSend
                 ? [
                     BoxShadow(
                       color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
@@ -725,22 +697,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(30),
               onTap: canSend ? _sendMessage : null,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+              child: Center(
                 child: chatState.isLoading
                     ? const SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                           color: Colors.white,
-                          strokeWidth: 2.5,
+                          strokeWidth: 2,
                         ),
                       )
                     : Icon(
                         Icons.arrow_upward_rounded,
-                        color: canSend ? Colors.white : Colors.grey.shade400,
+                        color: canSend ? Colors.white : Colors.grey.shade300,
                         size: 24,
                       ),
               ),
@@ -753,48 +724,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Widget _buildWelcomeView(ThemeData theme) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Gap(40),
-          // Animated Logo
+          const Gap(60),
           _buildAnimatedLogo(),
-          const Gap(32),
-          // Title
-          SizedBox(
-            height: 40,
-            child: DefaultTextStyle(
-              style: theme.textTheme.headlineSmall!.copyWith(
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.primary,
-                letterSpacing: -0.5,
-              ),
-              child: AnimatedTextKit(
-                animatedTexts: [
-                  TypewriterAnimatedText(
-                    'Chat with Vyana',
-                    speed: const Duration(milliseconds: 80),
-                  ),
-                ],
-                totalRepeatCount: 1,
-              ),
-            ),
-          ),
-          const Gap(8),
+          const Gap(40),
           Text(
-            'Your AI assistant for tasks, emails, and more',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 15,
+            'How can I help you today?',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 1500.ms, duration: 600.ms),
+          ).animate().fadeIn(duration: 600.ms).moveY(begin: 10, end: 0),
           const Gap(40),
-          // Quick Prompts
           _buildQuickPrompts(theme),
-          const Gap(32),
-          // Tips
-          _buildTips(theme),
         ],
       ),
     );
@@ -802,87 +748,64 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Widget _buildAnimatedLogo() {
     return Container(
-      width: 120,
-      height: 120,
-      padding: const EdgeInsets.all(4),
+      width: 140,
+      height: 140,
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.4),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryPurple.withOpacity(0.1),
+            AppColors.accentPink.withOpacity(0.05),
+          ],
         ),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryPurple.withOpacity(0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(4),
         child: ClipOval(
           child: Image.asset(
             'assets/images/vyana_logo.png',
             fit: BoxFit.cover,
-            errorBuilder: (c, e, s) => Container(
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-              ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 48),
-            ),
           ),
         ),
       ),
     )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .scale(
-          begin: const Offset(1, 1),
-          end: const Offset(1.05, 1.05),
-          duration: 2000.ms,
-          curve: Curves.easeInOut,
-        )
-        .shimmer(
-          delay: 1500.ms,
-          duration: 1500.ms,
-          color: Colors.white.withOpacity(0.3),
-        );
+    .animate(onPlay: (c) => c.repeat(reverse: true))
+    .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 3.seconds)
+    .then()
+    .shimmer(duration: 2.seconds, delay: 2.seconds);
   }
 
   Widget _buildQuickPrompts(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.bolt, size: 18, color: AppColors.warmOrange),
-            const Gap(6),
-            Text(
-              'Quick Start',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ],
-        ).animate().fadeIn(delay: 1700.ms),
-        const Gap(12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: _quickPrompts.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final prompt = entry.value;
-            return _buildPromptChip(
-              prompt['text'] as String,
-              prompt['icon'] as IconData,
-              theme,
-              idx,
-            );
-          }).toList(),
-        ),
-      ],
+    return Center(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        alignment: WrapAlignment.center,
+        children: _quickPrompts.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final prompt = entry.value;
+          return _buildPromptChip(
+            prompt['text'] as String,
+            prompt['icon'] as IconData,
+            theme,
+            idx,
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -890,13 +813,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       String text, IconData icon, ThemeData theme, int index) {
     return InkWell(
       onTap: () => _sendQuickPrompt(text),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primaryPurple.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -908,78 +831,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryPurple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 16, color: AppColors.primaryPurple),
-            ),
-            const Gap(10),
+            Icon(icon, size: 18, color: AppColors.primaryPurple),
+            const Gap(8),
             Text(
               text,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey.shade700,
+                color: theme.colorScheme.onSurface.withOpacity(0.8),
               ),
             ),
           ],
         ),
       ),
     )
-        .animate(delay: (1800 + (index * 100)).ms)
+        .animate(delay: (100 + (index * 100)).ms)
         .fadeIn(duration: 400.ms)
-        .slideX(begin: 0.1);
-  }
-
-  Widget _buildTips(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.accentCyan.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accentCyan.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.accentCyan.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.tips_and_updates_outlined,
-                size: 20, color: AppColors.accentCyan),
-          ),
-          const Gap(12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pro Tip',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accentCyan,
-                  ),
-                ),
-                const Gap(2),
-                Text(
-                  'Hold the mic button to record, or tap once to toggle.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 2200.ms, duration: 500.ms);
+        .slideY(begin: 0.2, end: 0);
   }
 
   void _sendMessage() {

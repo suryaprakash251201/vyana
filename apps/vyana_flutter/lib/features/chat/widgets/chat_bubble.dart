@@ -4,18 +4,112 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/features/chat/chat_provider.dart';
 
-class ChatBubble extends StatelessWidget {
+class ChatBubble extends StatefulWidget {
   final ChatMessage message;
 
   const ChatBubble({super.key, required this.message});
 
   @override
+  State<ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<ChatBubble> {
+  String _displayedText = '';
+  int _currentIndex = 0;
+  bool _animationComplete = false;
+  String? _lastContent;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimation();
+  }
+
+  @override
+  void didUpdateWidget(ChatBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If content changed (streaming update), continue animation
+    if (widget.message.content != _lastContent) {
+      _lastContent = widget.message.content;
+      if (!_animationComplete) {
+        _continueAnimation();
+      } else if (widget.message.isStreaming) {
+        _animationComplete = false;
+        _continueAnimation();
+      }
+    }
+  }
+
+  void _initAnimation() {
+    final isUser = widget.message.role == 'user';
+    _lastContent = widget.message.content;
+    
+    // User messages and tool messages don't animate
+    if (isUser || widget.message.role == 'tool') {
+      _displayedText = widget.message.content;
+      _animationComplete = true;
+      return;
+    }
+    
+    // If message is not streaming and has content, show immediately (old messages)
+    if (!widget.message.isStreaming && widget.message.content.isNotEmpty) {
+      _displayedText = widget.message.content;
+      _animationComplete = true;
+      return;
+    }
+    
+    // Start typing animation for new AI messages
+    _displayedText = '';
+    _currentIndex = 0;
+    _continueAnimation();
+  }
+
+  void _continueAnimation() {
+    if (!mounted) return;
+    
+    final content = widget.message.content;
+    if (_currentIndex >= content.length) {
+      if (!widget.message.isStreaming) {
+        setState(() => _animationComplete = true);
+      }
+      return;
+    }
+    
+    // Animate characters with variable speed
+    Future.delayed(const Duration(milliseconds: 8), () {
+      if (!mounted) return;
+      
+      final content = widget.message.content;
+      if (_currentIndex < content.length) {
+        setState(() {
+          // Add multiple characters at once for faster feel
+          final charsToAdd = _getCharsToAdd(content);
+          _currentIndex += charsToAdd;
+          if (_currentIndex > content.length) _currentIndex = content.length;
+          _displayedText = content.substring(0, _currentIndex);
+        });
+        _continueAnimation();
+      } else if (!widget.message.isStreaming) {
+        setState(() => _animationComplete = true);
+      }
+    });
+  }
+
+  int _getCharsToAdd(String content) {
+    // Speed up for longer content
+    if (content.length > 500) return 4;
+    if (content.length > 200) return 3;
+    if (content.length > 100) return 2;
+    return 1;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isUser = message.role == 'user';
+    final isUser = widget.message.role == 'user';
     final theme = Theme.of(context);
 
     // Activity Chip / Tool Call - Make it subtle
-    if (message.role == 'tool') {
+    if (widget.message.role == 'tool') {
        return Padding(
          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 24),
          child: Center(
@@ -34,7 +128,7 @@ class ChatBubble extends StatelessWidget {
                    Icon(Icons.hub_outlined, size: 12, color: theme.colorScheme.secondary),
                    const SizedBox(width: 6),
                    Text(
-                     "Processed ${message.content.length > 20 ? 'data...' : message.content}", 
+                     "Processed ${widget.message.content.length > 20 ? 'data...' : widget.message.content}", 
                      style: TextStyle(fontSize: 10, color: theme.colorScheme.secondary, fontWeight: FontWeight.w500)
                    ),
                  ],
@@ -45,122 +139,90 @@ class ChatBubble extends StatelessWidget {
        );
     }
 
+    // Determine what text to show
+    final textToShow = isUser ? widget.message.content : _displayedText;
+    final showCursor = !isUser && !_animationComplete && widget.message.isStreaming;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         decoration: BoxDecoration(
           gradient: isUser ? AppColors.primaryGradient : null,
           color: isUser ? null : theme.colorScheme.surface,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(24),
-            topRight: const Radius.circular(24),
-            bottomLeft: isUser ? const Radius.circular(24) : const Radius.circular(4),
-            bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(24),
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: isUser ? const Radius.circular(20) : const Radius.circular(4),
+            bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(20),
           ),
           boxShadow: [
             BoxShadow(
               color: isUser 
                   ? AppColors.primaryPurple.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+                  : Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
           ],
-          border: isUser ? null : Border.all(color: Colors.black.withOpacity(0.03)),
+          border: isUser ? null : Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!isUser) ...[
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.asset('assets/images/vyana_logo.png', width: 14, height: 14, fit: BoxFit.cover),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Vyana",
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-            ],
-            MarkdownBody(
-              data: message.content.isEmpty && message.isStreaming ? "..." : message.content,
-              selectable: true,
-              styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                 p: theme.textTheme.bodyMedium?.copyWith(
-                     color: isUser ? Colors.white : theme.colorScheme.onSurface,
-                     height: 1.5,
-                     fontSize: 15,
-                 ),
-                 strong: TextStyle(fontWeight: FontWeight.w600, color: isUser ? Colors.white : theme.colorScheme.primary),
-                 code: TextStyle(
-                   backgroundColor: isUser ? Colors.white24 : theme.colorScheme.surfaceContainerHighest,
-                   color: isUser ? Colors.white : theme.colorScheme.primary,
-                   fontSize: 13,
-                   fontFamily: 'monospace',
-                 ),
-                 codeblockDecoration: BoxDecoration(
-                   color: isUser ? Colors.white10 : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                   borderRadius: BorderRadius.circular(8),
-                 ),
-                 blockquote: TextStyle(color: isUser ? Colors.white70 : theme.colorScheme.secondary),
-                 blockquoteDecoration: BoxDecoration(
-                   border: Border(left: BorderSide(color: isUser ? Colors.white30 : theme.colorScheme.secondary.withOpacity(0.3), width: 3)),
-                 ),
-              ),
-            ),
-            if (!message.isStreaming && !isUser) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  InkWell(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: message.content));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied'), duration: Duration(milliseconds: 600), behavior: SnackBarBehavior.floating),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6.0),
-                      child: Icon(Icons.copy_rounded, size: 14, color: isUser ? Colors.white54 : Colors.grey.shade400),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (message.isStreaming)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(3, (i) => _buildTypingDot(i)),
+            // Animated text content with typing cursor
+            if (textToShow.isEmpty && !_animationComplete)
+              _buildTypingIndicator()
+            else
+              MarkdownBody(
+                data: showCursor ? '$textToShow▌' : textToShow,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                   p: theme.textTheme.bodyMedium?.copyWith(
+                       color: isUser ? Colors.white : theme.colorScheme.onSurface,
+                       height: 1.5,
+                       fontSize: 15,
+                   ),
+                   strong: TextStyle(fontWeight: FontWeight.w600, color: isUser ? Colors.white : theme.colorScheme.primary),
+                   code: TextStyle(
+                     backgroundColor: isUser ? Colors.white24 : theme.colorScheme.surfaceContainerHighest,
+                     color: isUser ? Colors.white : theme.colorScheme.primary,
+                     fontSize: 13,
+                     fontFamily: 'monospace',
+                   ),
+                   codeblockDecoration: BoxDecoration(
+                     color: isUser ? Colors.white10 : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                     borderRadius: BorderRadius.circular(8),
+                     border: Border.all(color: Colors.white.withOpacity(0.1)),
+                   ),
+                   blockquote: TextStyle(color: isUser ? Colors.white70 : theme.colorScheme.secondary),
+                   blockquoteDecoration: BoxDecoration(
+                     border: Border(left: BorderSide(color: isUser ? Colors.white30 : theme.colorScheme.secondary.withOpacity(0.3), width: 3)),
+                   ),
                 ),
               ),
+            if (_animationComplete && !isUser) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Optional: Add timestamp or other meta info here
+                ],
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) => _buildTypingDot(i)),
     );
   }
 
@@ -175,7 +237,7 @@ class ChatBubble extends StatelessWidget {
           width: 5,
           height: 5,
           decoration: BoxDecoration(
-            color: (message.role == 'user' ? Colors.white : AppColors.primaryPurple).withOpacity(value),
+            color: AppColors.primaryPurple.withOpacity(value),
             shape: BoxShape.circle,
           ),
         );
