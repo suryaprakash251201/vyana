@@ -473,13 +473,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   Widget _buildMessageList(ChatState chatState) {
+    // Filter out empty streaming messages to avoid double loading indicator
+    final messagesToShow = chatState.messages.where((m) => 
+      !(m.isStreaming && m.content.isEmpty)
+    ).toList();
+    
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: chatState.messages.length,
+      itemCount: messagesToShow.length,
       itemBuilder: (context, index) {
-        final isLast = index == chatState.messages.length - 1;
-        return ChatBubble(message: chatState.messages[index])
+        final isLast = index == messagesToShow.length - 1;
+        return ChatBubble(message: messagesToShow[index])
             .animate()
             .fadeIn(duration: 300.ms)
             .slideY(begin: isLast ? 0.15 : 0.05, end: 0);
