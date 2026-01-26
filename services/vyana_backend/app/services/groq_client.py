@@ -29,6 +29,12 @@ class GroqClient:
         # Use GPT OSS 20B for better tool calling support
         self.model_name = "openai/gpt-oss-20b"
         logger.info(f"GroqClient initialized with model: {self.model_name}")
+        # Cost control settings
+        self.low_cost_model = os.getenv("GROQ_LOW_COST_MODEL", "llama-3.1-8b-instant")
+        self.max_input_messages = int(os.getenv("GROQ_MAX_MESSAGES", "8"))
+        self.max_output_tokens = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "350"))
+        self.summary_max_tokens = int(os.getenv("GROQ_SUMMARY_MAX_TOKENS", "220"))
+        self.temperature = float(os.getenv("GROQ_TEMPERATURE", "0.3"))
         
         # Tool name mapping for models that use different naming conventions
         self.tool_name_map = {
@@ -73,6 +79,24 @@ class GroqClient:
             return text
         text = text.replace("`", "")
         return self._format_numbered_list(text)
+
+    def _select_model(self, requested_model: str, tools_enabled: bool, user_text: str) -> str:
+        """Choose a model based on request and cost controls."""
+        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
+        if requested_model and any(p in requested_model.lower() for p in valid_prefixes):
+            return requested_model
+        # Prefer low-cost model for short, non-tool requests
+        if not tools_enabled and user_text and len(user_text.strip()) <= 80:
+            return self.low_cost_model
+        return self.model_name
+
+    def _trim_messages(self, messages):
+        """Trim conversation history to reduce token usage."""
+        if not messages:
+            return messages
+        if self.max_input_messages <= 0:
+            return messages[-1:]
+        return messages[-self.max_input_messages:]
 
     def _format_numbered_list(self, text: str) -> str:
         """Ensure numbered list items appear one per line with spacing."""
@@ -770,10 +794,9 @@ class GroqClient:
             return f"Error: {str(e)}"
 
     async def stream_chat(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None, mcp_enabled: bool = True):
-        # Use user provided model or default
-        # Accept various Groq models with tool calling support
-        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
-        model = model_name if model_name and any(p in model_name.lower() for p in valid_prefixes) else self.model_name
+        # Select model with cost control
+        user_text = messages[-1].content if messages else ""
+        model = self._select_model(model_name, tools_enabled, user_text)
         
         # Get current date/time for context in IST
         from datetime import datetime
@@ -823,7 +846,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         groq_messages = []
         if memory_enabled:
             groq_messages.append({"role": "system", "content": system_content})
-            for m in messages[:-1]:
+            history = self._trim_messages(messages[:-1])
+            for m in history:
                 groq_messages.append({"role": m.role if m.role != "model" else "assistant", "content": m.content})
         else:
             groq_messages.append({"role": "system", "content": system_content})
@@ -841,6 +865,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                     messages=groq_messages,
                     tools=tools,
                     tool_choice="auto" if tools else "none",
+                    max_tokens=self.max_output_tokens,
+                    temperature=self.temperature,
                     stream=False 
                 )
             except Exception as e:
@@ -873,6 +899,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                                 summary_response = self.client.chat.completions.create(
                                     model=model,
                                     messages=summary_messages,
+                                    max_tokens=self.summary_max_tokens,
+                                    temperature=0.2,
                                     stream=True
                                 )
                                 for chunk in summary_response:
@@ -988,6 +1016,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                         messages=groq_messages,
                         tools=None,
                         tool_choice="none",
+                        max_tokens=self.max_output_tokens,
+                        temperature=self.temperature,
                         stream=False 
                     )
                 else:
@@ -1022,6 +1052,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                     stream = self.client.chat.completions.create(
                         model=model,
                         messages=groq_messages,
+                        max_tokens=self.max_output_tokens,
+                        temperature=self.temperature,
                         stream=True
                     )
                     
@@ -1080,6 +1112,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                                  summary_response = self.client.chat.completions.create(
                                      model=model,
                                      messages=summary_messages,
+                                     max_tokens=self.summary_max_tokens,
+                                     temperature=0.2,
                                      stream=True
                                  )
                                  for chunk in summary_response:
@@ -1106,10 +1140,9 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         Non-streaming version of chat for legacy/simple clients.
         Returns the full response string.
         """
-        # Use user provided model or default
-        # Accept various Groq models with tool calling support
-        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
-        model = model_name if model_name and any(p in model_name.lower() for p in valid_prefixes) else self.model_name
+        # Select model with cost control
+        user_text = messages[-1].content if messages else ""
+        model = self._select_model(model_name, tools_enabled, user_text)
         
         # Get current date/time for context in IST
         from datetime import datetime
@@ -1159,7 +1192,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         groq_messages = []
         if memory_enabled:
             groq_messages.append({"role": "system", "content": system_content})
-            for m in messages[:-1]:
+            history = self._trim_messages(messages[:-1])
+            for m in history:
                 groq_messages.append({"role": m.role if m.role != "model" else "assistant", "content": m.content})
         else:
             groq_messages.append({"role": "system", "content": system_content})
@@ -1176,6 +1210,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 messages=groq_messages,
                 tools=tools,
                 tool_choice="auto" if tools else "none",
+                max_tokens=self.max_output_tokens,
+                temperature=self.temperature,
                 stream=False 
             )
 
@@ -1207,6 +1243,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 final_completion = self.client.chat.completions.create(
                     model=model,
                     messages=groq_messages,
+                    max_tokens=self.max_output_tokens,
+                    temperature=self.temperature,
                     stream=False
                 )
                 return final_completion.choices[0].message.content or f"Done! {'; '.join(tool_results)}"
