@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/core/theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 // State to hold selected date and events
 // State to hold selected date and events
@@ -32,10 +31,9 @@ final calendarEventsProvider = FutureProvider.family<List<dynamic>, DateTime>((r
   final dateStr = "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
   final cacheKey = 'calendar_events_$dateStr';
 
-  // 1. Try to fetch from API
+  // 1. Try to fetch from API (backend uses Google OAuth tokens)
   try {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    final res = await apiClient.get('/calendar/events?date=$dateStr&user_id=$userId$calendarIdParam');
+    final res = await apiClient.get('/calendar/events?date=$dateStr$calendarIdParam');
     if (res['events'] is List) {
       final events = res['events'] as List<dynamic>;
       // Save to cache
@@ -82,8 +80,7 @@ final scheduleEventsProvider = FutureProvider<List<dynamic>>((ref) async {
       : '';
   
   try {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr&user_id=$userId$calendarIdParam');
+    final res = await apiClient.get('/calendar/events?start=$startStr&end=$endStr$calendarIdParam');
     if (res['events'] is List) {
       return res['events'] as List<dynamic>;
     }
@@ -742,8 +739,7 @@ class _AddEventSheetState extends ConsumerState<_AddEventSheet> {
         body['id'] = widget.existingEvent!['id'];
         result = await ref.read(apiClientProvider).put('/calendar/update', body: body);
       } else {
-        // Create new event
-        body['user_id'] = Supabase.instance.client.auth.currentUser?.id;
+        // Create new event (backend handles auth via Google OAuth)
         result = await ref.read(apiClientProvider).post('/calendar/create', body: body);
       }
       

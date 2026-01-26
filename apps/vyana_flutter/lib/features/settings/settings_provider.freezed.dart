@@ -65,24 +65,15 @@ class _$SettingsStateCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? responseStyle = null,Object? responseTone = null,Object? customInstructions = null,}) {
   return _then(_self.copyWith(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
-as String,
-toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
-as bool,
-isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
-as bool,
-geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
-as String,
-memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
-as String,
-responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
-as String,
-customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
+as String,toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
+as bool,isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
+as bool,geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
+as String,memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
+as bool,mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
+as bool,responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
+as String,responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
+as String,customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -209,10 +200,10 @@ return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDark
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String customInstructions)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String backendUrl,  bool toolsEnabled,  bool tamilMode,  bool isDarkTheme,  String geminiModel,  bool memoryEnabled,  bool mcpEnabled,  String responseStyle,  String responseTone,  String customInstructions)?  $default,) {final _that = this;
 switch (_that) {
 case _SettingsState() when $default != null:
-return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.customInstructions);case _:
+return $default(_that.backendUrl,_that.toolsEnabled,_that.tamilMode,_that.isDarkTheme,_that.geminiModel,_that.memoryEnabled,_that.mcpEnabled,_that.responseStyle,_that.responseTone,_that.customInstructions);case _:
   return null;
 
 }
@@ -288,24 +279,15 @@ class __$SettingsStateCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? backendUrl = null,Object? toolsEnabled = null,Object? tamilMode = null,Object? isDarkTheme = null,Object? geminiModel = null,Object? memoryEnabled = null,Object? mcpEnabled = null,Object? responseStyle = null,Object? responseTone = null,Object? customInstructions = null,}) {
   return _then(_SettingsState(
 backendUrl: null == backendUrl ? _self.backendUrl : backendUrl // ignore: cast_nullable_to_non_nullable
-as String,
-toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
-as bool,
-isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
-as bool,
-geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
-as String,
-memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
-responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
-as String,
-responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
-as String,
-customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
+as String,toolsEnabled: null == toolsEnabled ? _self.toolsEnabled : toolsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,tamilMode: null == tamilMode ? _self.tamilMode : tamilMode // ignore: cast_nullable_to_non_nullable
+as bool,isDarkTheme: null == isDarkTheme ? _self.isDarkTheme : isDarkTheme // ignore: cast_nullable_to_non_nullable
+as bool,geminiModel: null == geminiModel ? _self.geminiModel : geminiModel // ignore: cast_nullable_to_non_nullable
+as String,memoryEnabled: null == memoryEnabled ? _self.memoryEnabled : memoryEnabled // ignore: cast_nullable_to_non_nullable
+as bool,mcpEnabled: null == mcpEnabled ? _self.mcpEnabled : mcpEnabled // ignore: cast_nullable_to_non_nullable
+as bool,responseStyle: null == responseStyle ? _self.responseStyle : responseStyle // ignore: cast_nullable_to_non_nullable
+as String,responseTone: null == responseTone ? _self.responseTone : responseTone // ignore: cast_nullable_to_non_nullable
+as String,customInstructions: null == customInstructions ? _self.customInstructions : customInstructions // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

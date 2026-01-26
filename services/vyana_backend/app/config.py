@@ -1,6 +1,6 @@
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     PORT: int = 8080
@@ -24,8 +24,9 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3-pro-preview"
     GROQ_API_KEY: str
 
-    SUPABASE_URL: str  # Required: set in .env
-    SUPABASE_KEY: str  # Required: set in .env
+    # Supabase is now OPTIONAL - contacts use local JSON storage
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
     # Environment indicator
     DEBUG: bool = True
 
-    @field_validator("SECRET_KEY", "SUPABASE_URL", "SUPABASE_KEY")
+    @field_validator("SECRET_KEY")
     @classmethod
     def _non_empty(cls, value: str, info: ValidationInfo) -> str:
         if not value or not value.strip():

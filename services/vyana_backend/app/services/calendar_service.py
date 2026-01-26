@@ -36,7 +36,8 @@ class CalendarService:
 
     def _to_iso(self, date_str: str, end: bool = False) -> str:
         # date_str format: YYYY-MM-DD
-        suffix = "T23:59:59" if end else "T00:00:00"
+        # Use IST timezone (UTC+5:30) for proper filtering
+        suffix = "T23:59:59+05:30" if end else "T00:00:00+05:30"
         return f"{date_str}{suffix}"
 
     # =========================================================================
@@ -97,8 +98,8 @@ class CalendarService:
 
             events_result = google_service.events().list(
                 calendarId=target_calendar_id,
-                timeMin=f"{time_min}Z",
-                timeMax=f"{time_max}Z",
+                timeMin=time_min,
+                timeMax=time_max,
                 singleEvents=True,
                 orderBy='startTime'
             ).execute()

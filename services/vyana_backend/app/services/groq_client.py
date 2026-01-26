@@ -12,7 +12,7 @@ from app.services.mcp_service import mcp_service
 from app.services.weather_service import weather_service
 from app.services.search_service import search_service
 from app.services.utils_service import utils_service
-from app.services.contact_service import contact_service
+from app.services.google_contacts_service import google_contacts_service
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -203,14 +203,17 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "add_contact",
-                    "description": "Saves a new contact. Use this when the user asks to save someone's email.",
+                    "description": "Saves a new contact. Use this when the user asks to save someone's contact info (name, email, phone, company).",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string", "description": "Name of the person"},
-                            "email": {"type": "string", "description": "Email address"}
+                            "email": {"type": "string", "description": "Email address (optional)"},
+                            "phone": {"type": "string", "description": "Phone number (optional)"},
+                            "company": {"type": "string", "description": "Company/organization (optional)"},
+                            "notes": {"type": "string", "description": "Additional notes (optional)"}
                         },
-                        "required": ["name", "email"]
+                        "required": ["name"]
                     }
                 }
             },
@@ -218,7 +221,21 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "get_email_address",
-                    "description": "Finds an email address for a contact name.",
+                    "description": "Finds an email address for a contact by name.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Name to look up"}
+                        },
+                        "required": ["name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_phone_number",
+                    "description": "Finds a phone number for a contact by name.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -232,7 +249,7 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "list_contacts",
-                    "description": "Lists all saved contacts.",
+                    "description": "Lists all saved contacts with their names, emails, and phone numbers.",
                     "parameters": {
                         "type": "object",
                         "properties": {}
@@ -495,11 +512,20 @@ class GroqClient:
                 except Exception:
                     return json.dumps(events)
             elif function_name == "get_unread_emails_summary":
-                return str(gmail_service.summarize_emails(args.get("limit", 5)))
+                result = gmail_service.summarize_emails(args.get("limit", 5))
+                if isinstance(result, dict) and result.get("error"):
+                    return json.dumps({"error": "Google account not connected. Please go to Settings > Connect Google Account to enable email features."})
+                return str(result)
             elif function_name == "summarize_emails":
-                return str(gmail_service.summarize_emails(args.get("limit", 5)))
+                result = gmail_service.summarize_emails(args.get("limit", 5))
+                if isinstance(result, dict) and result.get("error"):
+                    return json.dumps({"error": "Google account not connected. Please go to Settings > Connect Google Account to enable email features."})
+                return str(result)
             elif function_name == "create_calendar_event":
-                return str(calendar_service.create_event(args["summary"], args["start_time"], args.get("duration_minutes", 60)))
+                result = calendar_service.create_event(args["summary"], args["start_time"], args.get("duration_minutes", 60))
+                if isinstance(result, dict) and result.get("error"):
+                    return json.dumps({"error": "Google Calendar not connected. Please go to Settings > Connect Google Account to enable calendar features."})
+                return str(result)
             elif function_name == "take_notes":
                 return str(notes_service.save_note(args["content"], args.get("title")))
             elif function_name == "get_notes":
@@ -510,13 +536,22 @@ class GroqClient:
             elif function_name == "search_emails":
                 return json.dumps(gmail_service.search_messages(args["query"], args.get("limit", 5)))
             
-            # Contact tools
+            # Contact tools (Google Contacts)
             elif function_name == "add_contact":
-                return contact_service.add_contact(args["name"], args["email"])
+                result = google_contacts_service.add_contact(
+                    name=args["name"],
+                    email=args.get("email"),
+                    phone=args.get("phone"),
+                    company=args.get("company"),
+                    notes=args.get("notes")
+                )
+                return result.get("message", str(result))
             elif function_name == "get_email_address":
-                return contact_service.get_email_address(args["name"])
+                return google_contacts_service.get_email_address(args["name"])
+            elif function_name == "get_phone_number":
+                return google_contacts_service.get_phone_number(args["name"])
             elif function_name == "list_contacts":
-                return contact_service.list_contacts()
+                return google_contacts_service.list_contacts()
             # Weather tools
             elif function_name == "get_weather":
                 return weather_service.get_weather(args.get("city", "Mumbai"))
@@ -585,7 +620,8 @@ class GroqClient:
 
     async def stream_chat(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None, mcp_enabled: bool = True):
         # Use user provided model or default to llama-3.1-8b-instant
-        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name) else self.model_name
+        # Accept llama, mixtral, and gemma models
+        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name or "gemma" in model_name) else self.model_name
         
         # Get current date/time for context in IST
         from datetime import datetime
@@ -821,7 +857,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         Returns the full response string.
         """
         # Use user provided model or default to llama-3.1-8b-instant
-        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name) else self.model_name
+        # Accept llama, mixtral, and gemma models
+        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name or "gemma" in model_name) else self.model_name
         
         # Get current date/time for context in IST
         from datetime import datetime
