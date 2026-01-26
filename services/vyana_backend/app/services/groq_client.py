@@ -29,6 +29,43 @@ class GroqClient:
         # Use GPT OSS 20B for better tool calling support
         self.model_name = "openai/gpt-oss-20b"
         logger.info(f"GroqClient initialized with model: {self.model_name}")
+        
+        # Tool name mapping for models that use different naming conventions
+        self.tool_name_map = {
+            "tasks:list": "list_tasks",
+            "tasks:create": "create_task",
+            "tasks:complete": "complete_task",
+            "tasks:update": "update_task",
+            "tasks:delete": "delete_task",
+            "tasks:search": "search_tasks",
+            "calendar:today": "get_calendar_today",
+            "calendar:events": "get_calendar_events",
+            "calendar:range": "get_calendar_range",
+            "calendar:create": "create_calendar_event",
+            "email:unread": "get_unread_emails_summary",
+            "email:summarize": "summarize_emails",
+            "email:send": "send_email",
+            "email:search": "search_emails",
+            "notes:save": "take_notes",
+            "notes:get": "get_notes",
+            "contacts:add": "add_contact",
+            "contacts:email": "get_email_address",
+            "weather:get": "get_weather",
+            "news:get": "get_news",
+            "time:now": "get_time_now",
+            "utils:calculate": "calculate",
+        }
+
+    def _normalize_tool_name(self, name: str) -> str:
+        """Normalize tool names from different model formats to our internal names."""
+        if name in self.tool_name_map:
+            return self.tool_name_map[name]
+        # Handle colon-separated format (category:action -> action_category)
+        if ":" in name:
+            parts = name.split(":")
+            if len(parts) == 2:
+                return f"{parts[1]}_{parts[0]}"
+        return name
 
     def _sanitize_output(self, text: str) -> str:
         """Sanitize output to avoid code formatting in chat responses."""
@@ -791,14 +828,45 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 )
             except Exception as e:
                 error_str = str(e)
-                # Check for failed generation due to XML tool call
+                # Check for failed generation due to XML tool call or JSON tool call
                 rescue_result = None
                 
-                if "failed_generation" in error_str:
+                if "failed_generation" in error_str or "tool_use_failed" in error_str:
                     try:
                         # Extract the inner failed generation string
                         # Error format: ... 'failed_generation': '<function=name>args' ...
-                        # Try multiple patterns
+                        # Or JSON format: {"name": "tasks:list", "arguments": {...}}
+                        
+                        # Pattern for JSON tool call format (new models use this)
+                        # Example: {"name": "tasks:list", "arguments": {"query":""}}
+                        json_match = re.search(r'\{"name":\s*"([^"]+)"[^}]*"arguments":\s*(\{[^}]*\})', error_str)
+                        if json_match:
+                            fn_name_raw = json_match.group(1)
+                            fn_args = json_match.group(2)
+                            # Use the normalize function to map tool names
+                            fn_name = self._normalize_tool_name(fn_name_raw)
+                            logger.info(f"Rescuing JSON tool call: {fn_name_raw} -> {fn_name} args: {fn_args}")
+                            fn_result = self._execute_function(fn_name, fn_args)
+                            # Summarize below
+                            try:
+                                summary_messages = [
+                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON or code. Present the information clearly. If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
+                                    {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
+                                ]
+                                summary_response = self.client.chat.completions.create(
+                                    model=model,
+                                    messages=summary_messages,
+                                    stream=True
+                                )
+                                for chunk in summary_response:
+                                    content = chunk.choices[0].delta.content
+                                    if content:
+                                        content = self._sanitize_output(content)
+                                        yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
+                                return
+                            except Exception as sum_err:
+                                logger.error(f"Summary LLM failed: {sum_err}")
+                                rescue_result = f"Done! The action was completed successfully."
                         
                         # Pattern 1: <function=name>{"args"}
                         match = re.search(r"<function=(\w+)>(\{.+?\})", error_str)
