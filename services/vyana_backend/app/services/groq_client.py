@@ -4,7 +4,7 @@ import logging
 from groq import Groq
 import re
 from app.config import settings
-from app.services.tasks_repo import tasks_repo
+from app.services import google_tasks_service as google_tasks_service
 from app.services.calendar_service import calendar_service
 from app.services.gmail_service import gmail_service
 from app.services.notes_service import notes_service
@@ -60,7 +60,9 @@ class GroqClient:
                         "type": "object",
                         "properties": {
                             "title": {"type": "string", "description": "The task title"},
-                            "due_date": {"type": "string", "description": "Optional due date in YYYY-MM-DD format"}
+                            "due_date": {"type": "string", "description": "Optional due date in YYYY-MM-DD format"},
+                            "notes": {"type": "string", "description": "Optional task notes"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         },
                         "required": ["title"]
                     }
@@ -74,7 +76,8 @@ class GroqClient:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "limit": {"type": "integer", "description": "Optional limit"}
+                            "limit": {"type": "integer", "description": "Optional limit"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         }
                     }
                 }
@@ -285,7 +288,8 @@ class GroqClient:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "task_id": {"type": "integer", "description": "ID of the task to complete"}
+                            "task_id": {"type": "string", "description": "ID of the task to complete"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         },
                         "required": ["task_id"]
                     }
@@ -299,9 +303,11 @@ class GroqClient:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "task_id": {"type": "integer", "description": "ID of the task"},
+                            "task_id": {"type": "string", "description": "ID of the task"},
                             "title": {"type": "string", "description": "New title (optional)"},
-                            "due_date": {"type": "string", "description": "New due date in YYYY-MM-DD format (optional)"}
+                            "due_date": {"type": "string", "description": "New due date in YYYY-MM-DD format (optional)"},
+                            "notes": {"type": "string", "description": "New notes (optional)"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         },
                         "required": ["task_id"]
                    }
@@ -315,7 +321,8 @@ class GroqClient:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "task_id": {"type": "integer", "description": "ID of the task to delete"}
+                            "task_id": {"type": "string", "description": "ID of the task to delete"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         },
                         "required": ["task_id"]
                     }
@@ -329,7 +336,8 @@ class GroqClient:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "query": {"type": "string", "description": "Search keyword"}
+                            "query": {"type": "string", "description": "Search keyword"},
+                            "task_list_id": {"type": "string", "description": "Optional task list id (default @default)"}
                         },
                         "required": ["query"]
                     }
@@ -485,23 +493,50 @@ class GroqClient:
             
             # Built-in tools
             if function_name == "create_task":
-                result = tasks_repo.add_task(args["title"], args.get("due_date"))
-                return json.dumps({"id": result.id, "status": "Task created"})
+                result = google_tasks_service.create_task(
+                    title=args["title"],
+                    task_list_id=args.get("task_list_id", "@default"),
+                    notes=args.get("notes"),
+                    due=args.get("due_date")
+                )
+                return json.dumps({"id": result.get("id"), "status": "Task created"})
             elif function_name == "list_tasks":
-                tasks = tasks_repo.list_tasks(include_completed=False)
-                return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
+                tasks = google_tasks_service.list_tasks(
+                    task_list_id=args.get("task_list_id", "@default"),
+                    show_completed=False,
+                    max_results=int(args.get("limit", 100))
+                )
+                return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in tasks])
             elif function_name == "complete_task":
-                success = tasks_repo.complete_task(args["task_id"])
-                return json.dumps({"success": success, "message": "Task completed" if success else "Task not found"})
+                result = google_tasks_service.complete_task(
+                    task_id=args["task_id"],
+                    task_list_id=args.get("task_list_id", "@default")
+                )
+                return json.dumps({"success": True, "message": "Task completed", "id": result.get("id")})
             elif function_name == "update_task":
-                success = tasks_repo.update_task(args["task_id"], args.get("title"), args.get("due_date"))
-                return json.dumps({"success": success, "message": "Task updated" if success else "Task not found"})
+                result = google_tasks_service.update_task(
+                    task_id=args["task_id"],
+                    task_list_id=args.get("task_list_id", "@default"),
+                    title=args.get("title"),
+                    notes=args.get("notes"),
+                    due=args.get("due_date")
+                )
+                return json.dumps({"success": True, "message": "Task updated", "id": result.get("id")})
             elif function_name == "delete_task":
-                success = tasks_repo.delete_task(args["task_id"])
-                return json.dumps({"success": success, "message": "Task deleted" if success else "Task not found"})
+                google_tasks_service.delete_task(
+                    task_id=args["task_id"],
+                    task_list_id=args.get("task_list_id", "@default")
+                )
+                return json.dumps({"success": True, "message": "Task deleted"})
             elif function_name == "search_tasks":
-                tasks = tasks_repo.search_tasks(args["query"])
-                return json.dumps([{"id": t.id, "title": t.title, "due": t.due_date} for t in tasks])
+                query = (args.get("query") or "").lower()
+                tasks = google_tasks_service.list_tasks(
+                    task_list_id=args.get("task_list_id", "@default"),
+                    show_completed=False,
+                    max_results=200
+                )
+                filtered = [t for t in tasks if query in (t.get("title") or "").lower()]
+                return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in filtered])
             elif function_name == "get_calendar_today":
                 return str(calendar_service.get_events())
             elif function_name == "get_calendar_events":
