@@ -71,7 +71,20 @@ class GroqClient:
         """Sanitize output to avoid code formatting in chat responses."""
         if not text:
             return text
-        return text.replace("`", "")
+        text = text.replace("`", "")
+        return self._format_numbered_list(text)
+
+    def _format_numbered_list(self, text: str) -> str:
+        """Ensure numbered list items appear one per line with spacing."""
+        if not text or not re.search(r"\b\d+\.\s", text):
+            return text
+        # Ensure each numbered item starts on its own line
+        text = re.sub(r"(?<!\n)(\b\d+\.\s)", r"\n\1", text)
+        # Add a blank line between numbered items
+        text = re.sub(r"\n(\d+\.\s)", r"\n\n\1", text)
+        # Normalize extra blank lines (max one blank line between items)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
 
     def transcribe_audio(self, file_content: bytes, filename: str) -> str:
         try:
