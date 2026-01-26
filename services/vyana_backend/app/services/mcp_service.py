@@ -63,6 +63,15 @@ KNOWN_MCP_SERVERS: Dict[str, MCPServerConfig] = {
         icon="📈",
         description="Access your Zerodha trading account - view holdings, positions, and market data"
     ),
+    "github": MCPServerConfig(
+        name="github",
+        display_name="GitHub",
+        url=os.getenv("GITHUB_MCP_URL", "https://mcp.github.com/mcp"),
+        auth_url=None,  # Use personal access token via /mcp/connect
+        requires_api_key=True,
+        icon="🐙",
+        description="Access GitHub repositories, issues, PRs, and files via MCP"
+    ),
     # Future MCPs can be added here
     # "notion": MCPServerConfig(...),
     # "github": MCPServerConfig(...),
