@@ -25,7 +25,8 @@ async def chat_stream(req: ChatRequest):
             model_name=req.settings.get("model", "llama-3.1-8b-instant"),
             memory_enabled=req.settings.get("memory_enabled", True),
             custom_instructions=req.settings.get("custom_instructions", ""),
-            mcp_enabled=req.settings.get("mcp_enabled", True)
+            mcp_enabled=req.settings.get("mcp_enabled", True),
+            max_output_tokens=req.settings.get("max_output_tokens")
         ),
         media_type="text/event-stream"
     )

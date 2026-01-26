@@ -255,6 +255,7 @@ class Chat extends _$Chat {
             'memory_enabled': settings.memoryEnabled,
             'custom_instructions': combinedInstructions,
             'mcp_enabled': settings.mcpEnabled,
+            'max_output_tokens': settings.maxOutputTokens,
           }
         });
 

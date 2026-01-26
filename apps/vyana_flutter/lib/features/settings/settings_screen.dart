@@ -588,6 +588,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   : null,
                             ),
                             const Gap(12),
+                            Text('Max output tokens', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            Slider(
+                              value: settings.maxOutputTokens.toDouble(),
+                              min: 64,
+                              max: 2000,
+                              divisions: 97,
+                              label: '${settings.maxOutputTokens} tokens',
+                              onChanged: (val) => ref.read(settingsProvider.notifier).setMaxOutputTokens(val.round()),
+                            ),
+                            const Gap(12),
                             Text('Fallback model', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                             const Gap(8),
                             DropdownButtonFormField<String>(

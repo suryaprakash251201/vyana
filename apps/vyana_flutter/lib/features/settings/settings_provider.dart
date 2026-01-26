@@ -19,6 +19,7 @@ abstract class SettingsState with _$SettingsState {
     required bool mcpEnabled,
     required String responseStyle,
     required String responseTone,
+    required int maxOutputTokens,
     @Default('') String customInstructions,
   }) = _SettingsState;
 }
@@ -56,6 +57,7 @@ class Settings extends _$Settings {
       mcpEnabled: prefs.getBool('mcpEnabled') ?? true,
       responseStyle: prefs.getString('responseStyle') ?? 'Balanced',
       responseTone: prefs.getString('responseTone') ?? 'Friendly',
+      maxOutputTokens: prefs.getInt('maxOutputTokens') ?? 350,
       customInstructions: prefs.getString('customInstructions') ?? '',
     );
   }
@@ -119,5 +121,11 @@ class Settings extends _$Settings {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('responseTone', tone);
     state = AsyncData(state.value!.copyWith(responseTone: tone));
+  }
+
+  Future<void> setMaxOutputTokens(int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('maxOutputTokens', value);
+    state = AsyncData(state.value!.copyWith(maxOutputTokens: value));
   }
 }
