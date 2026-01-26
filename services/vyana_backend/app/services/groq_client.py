@@ -29,6 +29,12 @@ class GroqClient:
         self.model_name = "llama-3.1-8b-instant" # Default
         logger.info(f"GroqClient initialized.")
 
+    def _sanitize_output(self, text: str) -> str:
+        """Sanitize output to avoid code formatting in chat responses."""
+        if not text:
+            return text
+        return text.replace("`", "")
+
     def transcribe_audio(self, file_content: bytes, filename: str) -> str:
         try:
             transcription = self.client.audio.transcriptions.create(
@@ -680,7 +686,8 @@ Tool Usage & Data Presentation:
 - **MAXIMIZE TOOL USAGE**: You have access to powerful tools including Calendar, Email, Tasks, and external MCP tools (like Stock Market access).
 - **ALWAYS CHECK TOOLS**: If a user's request *might* be solved or enhanced by a tool, USE IT. Do not guess or hallucinate data.
 - **MCP Tools**: You have access to Model Context Protocol (MCP) tools. Use them extensively when relevant.
-- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
+- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks, or tool/function names unless the user explicitly asks for "technical details".
+- **No code formatting**: Do not use backticks or show code-like responses.
 - **Formatting**: Present financial or list data in clean markdown tables or bullet points.
 
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
@@ -800,6 +807,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                                 for chunk in summary_response:
                                     content = chunk.choices[0].delta.content
                                     if content:
+                                        content = self._sanitize_output(content)
                                         yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
                                 return
                             except Exception as sum_err:
@@ -814,6 +822,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                         rescue_result = f"I tried to execute that action but encountered an error: {rescue_err}"
 
                 if rescue_result:
+                     rescue_result = self._sanitize_output(rescue_result)
                      yield f"data: {json.dumps({'type': 'text', 'content': rescue_result})}\n\n"
                      return # End stream
                 
@@ -867,18 +876,19 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                         content = chunk.choices[0].delta.content
                         if content:
                             has_content = True
+                            content = self._sanitize_output(content)
                             yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
                     
                     # If no content was streamed, send a fallback response
                     if not has_content:
                         # Try to generate a natural summary
-                        fallback = "Done! The action was completed successfully."
+                        fallback = self._sanitize_output("Done! The action was completed successfully.")
                         yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
                         
                 except Exception as e:
                     logger.error(f"Error in second LLM call: {e}")
                     # Fallback: summarize tool result
-                    fallback = "Done! The action was completed successfully."
+                    fallback = self._sanitize_output("Done! The action was completed successfully.")
                     yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
 
             else:
@@ -887,8 +897,9 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 # To support 'typing' effect, we can just send it as one chunk or split it.
                 # Or we can re-request with stream=True (wasteful).
                 # Sending as one chunk is fine.
-                if response_message.content:
-                     yield f"data: {json.dumps({'type': 'text', 'content': response_message.content})}\n\n"
+                 if response_message.content:
+                     content = self._sanitize_output(response_message.content)
+                     yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
 
         except Exception as e:
             logger.error(f"Error in Groq stream: {e}")
@@ -937,7 +948,8 @@ Tool Usage & Data Presentation:
 - **MAXIMIZE TOOL USAGE**: You have access to powerful tools including Calendar, Email, Tasks, and external MCP tools (like Stock Market access).
 - **ALWAYS CHECK TOOLS**: If a user's request *might* be solved or enhanced by a tool, USE IT. Do not guess or hallucinate data.
 - **MCP Tools**: You have access to Model Context Protocol (MCP) tools. Use them extensively when relevant.
-- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks with data, or debugging information unless the user explicitly asks for "technical details".
+- **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks, or tool/function names unless the user explicitly asks for "technical details".
+- **No code formatting**: Do not use backticks or show code-like responses.
 - **Formatting**: Present financial or list data in clean markdown tables or bullet points.
 
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
