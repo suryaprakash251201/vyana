@@ -76,12 +76,16 @@ class GroqClient:
 
     def _format_numbered_list(self, text: str) -> str:
         """Ensure numbered list items appear one per line with spacing."""
-        if not text or not re.search(r"\b\d+\.\s", text):
+        if not text or not re.search(r"\b\d+\.", text):
             return text
+        # Normalize list markers like "1.Item" -> "1. Item"
+        text = re.sub(r"\b(\d+)\.(\S)", r"\1. \2", text)
         # Ensure each numbered item starts on its own line
         text = re.sub(r"(?<!\n)(\b\d+\.\s)", r"\n\1", text)
         # Add a blank line between numbered items
         text = re.sub(r"\n(\d+\.\s)", r"\n\n\1", text)
+        # Align common fields on new lines within each item
+        text = re.sub(r"\s*(\*+\s*)?(Time|Due|Description|Notes|Type):", r"\n\1\2:", text, flags=re.IGNORECASE)
         # Normalize extra blank lines (max one blank line between items)
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
