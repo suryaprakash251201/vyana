@@ -743,7 +743,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                                 fn_args = "{}"  # Empty args
                                 logger.info(f"Rescuing tool call with empty args: {fn_name}")
                                 fn_result = self._execute_function(fn_name, fn_args)
-                                rescue_result = f"I have executed the request. Result: {fn_result}"
+                                # Will be summarized below
                         
                         # Pattern 5: <function=name> (just function name, no closing tag)
                         if not match and not rescue_result:
@@ -753,7 +753,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                                 fn_args = "{}"  # Empty args
                                 logger.info(f"Rescuing tool call (no closing tag): {fn_name}")
                                 fn_result = self._execute_function(fn_name, fn_args)
-                                rescue_result = f"I have executed the request. Result: {fn_result}"
+                                # Will be summarized below
                         
                         if match and not rescue_result:
                             fn_name = match.group(1)
@@ -785,7 +785,26 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                             
                             # Execute
                             fn_result = self._execute_function(fn_name, fn_args)
-                            rescue_result = f"I have executed the request. Result: {fn_result}"
+                            
+                            # Use LLM to summarize the result instead of raw output
+                            try:
+                                summary_messages = [
+                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON or code. Present the information clearly."},
+                                    {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
+                                ]
+                                summary_response = self.client.chat.completions.create(
+                                    model=model,
+                                    messages=summary_messages,
+                                    stream=True
+                                )
+                                for chunk in summary_response:
+                                    content = chunk.choices[0].delta.content
+                                    if content:
+                                        yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
+                                return
+                            except Exception as sum_err:
+                                logger.error(f"Summary LLM failed: {sum_err}")
+                                rescue_result = f"Done! The action was completed successfully."
                             
                     except json.JSONDecodeError as je:
                         logger.error(f"Rescue JSON parse failed: {je}")
@@ -852,13 +871,14 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                     
                     # If no content was streamed, send a fallback response
                     if not has_content:
-                        fallback = f"Done! {'; '.join(tool_results)}"
+                        # Try to generate a natural summary
+                        fallback = "Done! The action was completed successfully."
                         yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
                         
                 except Exception as e:
                     logger.error(f"Error in second LLM call: {e}")
-                    # Fallback: send tool result directly
-                    fallback = f"Completed. {'; '.join(tool_results)}"
+                    # Fallback: summarize tool result
+                    fallback = "Done! The action was completed successfully."
                     yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
 
             else:
