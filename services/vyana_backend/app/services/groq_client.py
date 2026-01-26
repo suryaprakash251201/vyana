@@ -493,50 +493,74 @@ class GroqClient:
             
             # Built-in tools
             if function_name == "create_task":
-                result = google_tasks_service.create_task(
-                    title=args["title"],
-                    task_list_id=args.get("task_list_id", "@default"),
-                    notes=args.get("notes"),
-                    due=args.get("due_date")
-                )
-                return json.dumps({"id": result.get("id"), "status": "Task created"})
+                try:
+                    result = google_tasks_service.create_task(
+                        title=args["title"],
+                        task_list_id=args.get("task_list_id", "@default"),
+                        notes=args.get("notes"),
+                        due=args.get("due_date")
+                    )
+                    return json.dumps({"id": result.get("id"), "status": "Task created", "title": args["title"]})
+                except Exception as e:
+                    logger.error(f"Error creating task: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "list_tasks":
-                tasks = google_tasks_service.list_tasks(
-                    task_list_id=args.get("task_list_id", "@default"),
-                    show_completed=False,
-                    max_results=int(args.get("limit", 100))
-                )
-                return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in tasks])
+                try:
+                    tasks = google_tasks_service.list_tasks(
+                        task_list_id=args.get("task_list_id", "@default"),
+                        show_completed=False,
+                        max_results=int(args.get("limit", 100))
+                    )
+                    return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in tasks])
+                except Exception as e:
+                    logger.error(f"Error listing tasks: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "complete_task":
-                result = google_tasks_service.complete_task(
-                    task_id=args["task_id"],
-                    task_list_id=args.get("task_list_id", "@default")
-                )
-                return json.dumps({"success": True, "message": "Task completed", "id": result.get("id")})
+                try:
+                    result = google_tasks_service.complete_task(
+                        task_id=args["task_id"],
+                        task_list_id=args.get("task_list_id", "@default")
+                    )
+                    return json.dumps({"success": True, "message": "Task completed", "id": result.get("id")})
+                except Exception as e:
+                    logger.error(f"Error completing task: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "update_task":
-                result = google_tasks_service.update_task(
-                    task_id=args["task_id"],
-                    task_list_id=args.get("task_list_id", "@default"),
-                    title=args.get("title"),
-                    notes=args.get("notes"),
-                    due=args.get("due_date")
-                )
-                return json.dumps({"success": True, "message": "Task updated", "id": result.get("id")})
+                try:
+                    result = google_tasks_service.update_task(
+                        task_id=args["task_id"],
+                        task_list_id=args.get("task_list_id", "@default"),
+                        title=args.get("title"),
+                        notes=args.get("notes"),
+                        due=args.get("due_date")
+                    )
+                    return json.dumps({"success": True, "message": "Task updated", "id": result.get("id")})
+                except Exception as e:
+                    logger.error(f"Error updating task: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "delete_task":
-                google_tasks_service.delete_task(
-                    task_id=args["task_id"],
-                    task_list_id=args.get("task_list_id", "@default")
-                )
-                return json.dumps({"success": True, "message": "Task deleted"})
+                try:
+                    google_tasks_service.delete_task(
+                        task_id=args["task_id"],
+                        task_list_id=args.get("task_list_id", "@default")
+                    )
+                    return json.dumps({"success": True, "message": "Task deleted"})
+                except Exception as e:
+                    logger.error(f"Error deleting task: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "search_tasks":
-                query = (args.get("query") or "").lower()
-                tasks = google_tasks_service.list_tasks(
-                    task_list_id=args.get("task_list_id", "@default"),
-                    show_completed=False,
-                    max_results=200
-                )
-                filtered = [t for t in tasks if query in (t.get("title") or "").lower()]
-                return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in filtered])
+                try:
+                    query = (args.get("query") or "").lower()
+                    tasks = google_tasks_service.list_tasks(
+                        task_list_id=args.get("task_list_id", "@default"),
+                        show_completed=False,
+                        max_results=200
+                    )
+                    filtered = [t for t in tasks if query in (t.get("title") or "").lower()]
+                    return json.dumps([{"id": t.get("id"), "title": t.get("title"), "due": t.get("due")} for t in filtered])
+                except Exception as e:
+                    logger.error(f"Error searching tasks: {e}")
+                    return json.dumps({"error": "Google Tasks not connected. Please go to Settings > Connect Google Account to enable task features."})
             elif function_name == "get_calendar_today":
                 return str(calendar_service.get_events())
             elif function_name == "get_calendar_events":
@@ -934,34 +958,46 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 # Sending as one chunk is fine.
                 if response_message.content:
                      content = response_message.content
-                     # If the model emitted an inline tool tag, execute it and summarize.
-                     inline_match = re.search(r"<function=(\w+)>(\{.*?\})?\s*</function>", content, re.DOTALL)
-                     if inline_match:
-                         fn_name = inline_match.group(1)
-                         fn_args = inline_match.group(2) or "{}"
-                         logger.info(f"Inline tool tag detected: {fn_name} args: {fn_args}")
-                         fn_result = self._execute_function(fn_name, fn_args)
-                         try:
-                             summary_messages = [
-                                 {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON or code. Present the information clearly."},
-                                 {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
-                             ]
-                             summary_response = self.client.chat.completions.create(
-                                 model=model,
-                                 messages=summary_messages,
-                                 stream=True
-                             )
-                             for chunk in summary_response:
-                                 chunk_content = chunk.choices[0].delta.content
-                                 if chunk_content:
-                                     chunk_content = self._sanitize_output(chunk_content)
-                                     yield f"data: {json.dumps({'type': 'text', 'content': chunk_content})}\n\n"
-                             return
-                         except Exception as sum_err:
-                             logger.error(f"Inline summary failed: {sum_err}")
-                             fallback = self._sanitize_output("Done! The action was completed successfully.")
-                             yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
-                             return
+                     
+                     # Check for inline tool tags and execute them
+                     # Patterns to match:
+                     # 1. <function=name>{"args"}</function>
+                     # 2. <function=name></function>
+                     # 3. <function=name>{args}</function>
+                     inline_patterns = [
+                         r"<function=(\w+)>(\{.*?\})\s*</function>",  # with JSON args
+                         r"<function=(\w+)>\s*</function>",           # empty args
+                         r"<function=(\w+)>",                          # unclosed tag
+                     ]
+                     
+                     for pattern in inline_patterns:
+                         inline_match = re.search(pattern, content, re.DOTALL)
+                         if inline_match:
+                             fn_name = inline_match.group(1)
+                             fn_args = inline_match.group(2) if len(inline_match.groups()) > 1 and inline_match.group(2) else "{}"
+                             logger.info(f"Inline tool tag detected: {fn_name} args: {fn_args}")
+                             fn_result = self._execute_function(fn_name, fn_args)
+                             try:
+                                 summary_messages = [
+                                     {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON or code. Present the information clearly. If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
+                                     {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
+                                 ]
+                                 summary_response = self.client.chat.completions.create(
+                                     model=model,
+                                     messages=summary_messages,
+                                     stream=True
+                                 )
+                                 for chunk in summary_response:
+                                     chunk_content = chunk.choices[0].delta.content
+                                     if chunk_content:
+                                         chunk_content = self._sanitize_output(chunk_content)
+                                         yield f"data: {json.dumps({'type': 'text', 'content': chunk_content})}\n\n"
+                                 return
+                             except Exception as sum_err:
+                                 logger.error(f"Inline summary failed: {sum_err}")
+                                 fallback = self._sanitize_output("Done! The action was completed successfully.")
+                                 yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
+                                 return
 
                      content = self._sanitize_output(content)
                      yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
