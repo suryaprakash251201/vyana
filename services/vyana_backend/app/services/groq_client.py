@@ -794,7 +794,7 @@ Tool Usage & Data Presentation:
 - **MCP Tools**: You have access to Model Context Protocol (MCP) tools. Use them extensively when relevant.
 - **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks, or tool/function names unless the user explicitly asks for "technical details".
 - **No code formatting**: Do not use backticks or show code-like responses.
-- **Formatting**: Present lists as numbered items (1., 2., 3.). Do NOT use tables or boxed layouts.
+- **Formatting**: Present lists as numbered items (1., 2., 3.). Each item must be on its own line, with a blank line between items. Do NOT use tables, boxed layouts, or multiple items on the same line.
 
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
         
@@ -850,7 +850,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                             # Summarize below
                             try:
                                 summary_messages = [
-                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.). If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
+                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.), with each item on its own line and a blank line between items. Do NOT put multiple items on the same line. If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
                                     {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
                                 ]
                                 summary_response = self.client.chat.completions.create(
@@ -933,7 +933,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                             # Use LLM to summarize the result instead of raw output
                             try:
                                 summary_messages = [
-                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.)."},
+                                    {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.), with each item on its own line and a blank line between items. Do NOT put multiple items on the same line."},
                                     {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
                                 ]
                                 summary_response = self.client.chat.completions.create(
@@ -1057,7 +1057,7 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                              fn_result = self._execute_function(fn_name, fn_args)
                              try:
                                  summary_messages = [
-                                     {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.). If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
+                                     {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON, code, or tables. Present results as a numbered list (1., 2., 3.), with each item on its own line and a blank line between items. Do NOT put multiple items on the same line. If there's an error about Google account not connected, tell the user to connect their Google account in Settings."},
                                      {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
                                  ]
                                  summary_response = self.client.chat.completions.create(
