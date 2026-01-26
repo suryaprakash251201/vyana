@@ -932,8 +932,38 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 # To support 'typing' effect, we can just send it as one chunk or split it.
                 # Or we can re-request with stream=True (wasteful).
                 # Sending as one chunk is fine.
-                 if response_message.content:
-                     content = self._sanitize_output(response_message.content)
+                if response_message.content:
+                     content = response_message.content
+                     # If the model emitted an inline tool tag, execute it and summarize.
+                     inline_match = re.search(r"<function=(\w+)>(\{.*?\})?\s*</function>", content, re.DOTALL)
+                     if inline_match:
+                         fn_name = inline_match.group(1)
+                         fn_args = inline_match.group(2) or "{}"
+                         logger.info(f"Inline tool tag detected: {fn_name} args: {fn_args}")
+                         fn_result = self._execute_function(fn_name, fn_args)
+                         try:
+                             summary_messages = [
+                                 {"role": "system", "content": "You are Vyana, a helpful assistant. Summarize the following tool result in a friendly, natural way. Do NOT output raw JSON or code. Present the information clearly."},
+                                 {"role": "user", "content": f"Tool: {fn_name}\nResult: {fn_result}\n\nPlease summarize this in natural language for the user."}
+                             ]
+                             summary_response = self.client.chat.completions.create(
+                                 model=model,
+                                 messages=summary_messages,
+                                 stream=True
+                             )
+                             for chunk in summary_response:
+                                 chunk_content = chunk.choices[0].delta.content
+                                 if chunk_content:
+                                     chunk_content = self._sanitize_output(chunk_content)
+                                     yield f"data: {json.dumps({'type': 'text', 'content': chunk_content})}\n\n"
+                             return
+                         except Exception as sum_err:
+                             logger.error(f"Inline summary failed: {sum_err}")
+                             fallback = self._sanitize_output("Done! The action was completed successfully.")
+                             yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
+                             return
+
+                     content = self._sanitize_output(content)
                      yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
 
         except Exception as e:
