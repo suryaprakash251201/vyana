@@ -55,7 +55,7 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "create_task",
-                    "description": "Creates a new task in the personal to-do list",
+                    "description": "Creates a new task in the user's Google Tasks to-do list. Use when user wants to add, create, or make a new task.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -72,7 +72,7 @@ class GroqClient:
                 "type": "function",
                 "function": {
                     "name": "list_tasks",
-                    "description": "Lists all uncompleted tasks",
+                    "description": "Lists all uncompleted tasks from the user's Google Tasks. Use when user asks 'what are my tasks', 'show my tasks', 'check tasks', 'pending tasks', or 'to-do list'.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -681,7 +681,15 @@ class GroqClient:
                     import pytz
                     ist = pytz.timezone("Asia/Kolkata")
                 today = datetime.now(ist).date()
-                tasks = tasks_repo.list_tasks(include_completed=False)
+                try:
+                    tasks = google_tasks_service.list_tasks(
+                        task_list_id="@default",
+                        show_completed=False,
+                        max_results=100
+                    )
+                except Exception as e:
+                    logger.error(f"Error fetching tasks for digest: {e}")
+                    tasks = []
                 events = calendar_service.get_events()
                 today_events = []
                 for e in events:
