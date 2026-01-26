@@ -26,8 +26,9 @@ class GroqClient:
             logger.warning("GROQ_API_KEY not found in settings or env.")
         
         self.client = Groq(api_key=api_key)
-        self.model_name = "llama-3.1-8b-instant" # Default
-        logger.info(f"GroqClient initialized.")
+        # Use GPT OSS 20B for better tool calling support
+        self.model_name = "openai/gpt-oss-20b"
+        logger.info(f"GroqClient initialized with model: {self.model_name}")
 
     def _sanitize_output(self, text: str) -> str:
         """Sanitize output to avoid code formatting in chat responses."""
@@ -715,9 +716,10 @@ class GroqClient:
             return f"Error: {str(e)}"
 
     async def stream_chat(self, messages, conversation_id: str, tools_enabled: bool, model_name: str = None, memory_enabled: bool = True, custom_instructions: str = None, mcp_enabled: bool = True):
-        # Use user provided model or default to llama-3.1-8b-instant
-        # Accept llama, mixtral, and gemma models
-        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name or "gemma" in model_name) else self.model_name
+        # Use user provided model or default
+        # Accept various Groq models with tool calling support
+        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
+        model = model_name if model_name and any(p in model_name.lower() for p in valid_prefixes) else self.model_name
         
         # Get current date/time for context in IST
         from datetime import datetime
@@ -1019,9 +1021,10 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         Non-streaming version of chat for legacy/simple clients.
         Returns the full response string.
         """
-        # Use user provided model or default to llama-3.1-8b-instant
-        # Accept llama, mixtral, and gemma models
-        model = model_name if model_name and ("llama" in model_name or "mixtral" in model_name or "gemma" in model_name) else self.model_name
+        # Use user provided model or default
+        # Accept various Groq models with tool calling support
+        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
+        model = model_name if model_name and any(p in model_name.lower() for p in valid_prefixes) else self.model_name
         
         # Get current date/time for context in IST
         from datetime import datetime
