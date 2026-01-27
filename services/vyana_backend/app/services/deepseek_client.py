@@ -19,6 +19,7 @@ from langgraph.graph.message import add_messages
 from app.config import settings
 from app.services.langgraph_tools import get_all_tools, get_mcp_tools_as_langchain
 from app.services.mcp_service import mcp_service
+from app.services.cache_service import cache_service
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -320,6 +321,21 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         # Use provided model or default
         model = model_name if model_name else self.model_name
         
+        # Get the user's message for caching
+        user_message = messages[-1].content if messages else ""
+        
+        # Check cache for simple queries (no tools enabled)
+        if not tools_enabled and not mcp_enabled:
+            cached_response = await cache_service.get_chat_response(
+                message=user_message,
+                model=model,
+                tools_enabled=False
+            )
+            if cached_response:
+                logger.info(f"Returning cached response for: {user_message[:50]}...")
+                yield f"data: {json.dumps({'type': 'text', 'content': cached_response, 'cached': True})}\n\n"
+                return
+        
         # Get current date/time for context in IST
         ist = _get_ist_timezone()
         now = datetime.now(ist)
@@ -389,6 +405,15 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
             if not final_response:
                 fallback = self._sanitize_output("Done! The action was completed successfully.")
                 yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
+            
+            # Cache the response for simple queries (no tools)
+            if final_response and not tools_enabled and not mcp_enabled:
+                await cache_service.set_chat_response(
+                    message=user_message,
+                    response=final_response,
+                    model=model,
+                    tools_enabled=False
+                )
                 
         except Exception as e:
             logger.error(f"Error in LangGraph stream: {e}")
@@ -401,6 +426,20 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         """
         # Use provided model or default
         model = model_name if model_name else self.model_name
+        
+        # Get the user's message for caching
+        user_message = messages[-1].content if messages else ""
+        
+        # Check cache for simple queries (no tools enabled)
+        if not tools_enabled and not mcp_enabled:
+            cached_response = await cache_service.get_chat_response(
+                message=user_message,
+                model=model,
+                tools_enabled=False
+            )
+            if cached_response:
+                logger.info(f"Returning cached response for: {user_message[:50]}...")
+                return cached_response
         
         # Get current date/time for context in IST
         ist = _get_ist_timezone()
@@ -446,7 +485,18 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
             # Get the last AI message
             for msg in reversed(final_state["messages"]):
                 if isinstance(msg, AIMessage) and msg.content:
-                    return self._sanitize_output(msg.content)
+                    response = self._sanitize_output(msg.content)
+                    
+                    # Cache the response for simple queries (no tools)
+                    if not tools_enabled and not mcp_enabled:
+                        await cache_service.set_chat_response(
+                            message=user_message,
+                            response=response,
+                            model=model,
+                            tools_enabled=False
+                        )
+                    
+                    return response
             
             return "I processed your request."
             

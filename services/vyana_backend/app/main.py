@@ -1,9 +1,35 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes import chat, tasks, google_auth, health, calendar, gmail, voice, mcp, tools, tts, monitoring
+from app.services.cache_service import cache_service
+import logging
 
-app = FastAPI(title="Vyana Backend", version="0.1.0")
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan - startup and shutdown events"""
+    # Startup
+    logger.info("Starting Vyana Backend...")
+    
+    # Connect to Redis cache
+    await cache_service.connect()
+    if cache_service.is_connected:
+        logger.info("Redis cache connected successfully")
+    else:
+        logger.warning("Redis cache not available - running without cache")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Vyana Backend...")
+    await cache_service.disconnect()
+
+
+app = FastAPI(title="Vyana Backend", version="0.1.0", lifespan=lifespan)
 
 # CORS for Flutter web/emulator
 app.add_middleware(

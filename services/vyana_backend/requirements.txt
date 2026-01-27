@@ -27,6 +27,7 @@ python-multipart>=0.0.6,<1.0.0
 
 # Database
 supabase>=2.0.0,<3.0.0
+redis>=5.0.0,<6.0.0
 
 # MCP & SSE
 fastmcp>=2.0.0,<3.0.0

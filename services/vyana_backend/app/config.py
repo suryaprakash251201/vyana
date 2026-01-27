@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Search API (Optional - for web search)
     # Get free API key from: https://serpapi.com/
     SERP_API_KEY: str = ""
+    
+    # Redis Cache Configuration
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CACHE_TTL: int = 3600  # Cache TTL in seconds (1 hour default)
+    CACHE_ENABLED: bool = True
 
     # Feature Toggles (Can be overriden by env or at runtime via API if we adding mutable state)
     ENABLE_TOOLS: bool = True

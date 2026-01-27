@@ -1,4 +1,19 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: vyana-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   vyana-backend:
     build: .
     container_name: vyana-backend
@@ -11,6 +26,7 @@ services:
       - PORT=8000
       - HOST=0.0.0.0
       - DATA_DIR=/app/data
+      - REDIS_URL=redis://redis:6379/0
       # MCP Configuration (optional - can also be in .env)
       # - ZERODHA_API_KEY=${ZERODHA_API_KEY}
       # - ZERODHA_API_SECRET=${ZERODHA_API_SECRET}
@@ -19,8 +35,14 @@ services:
     volumes:
       - ./data:/app/data
       - ./vyana.db:/app/vyana.db # Persist SQLite database
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  redis_data:
