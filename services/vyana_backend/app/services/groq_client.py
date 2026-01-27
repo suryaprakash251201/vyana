@@ -86,8 +86,25 @@ class GroqClient:
         
         logger.info(f"GroqClient (LangGraph) initialized with model: {self.model_name}")
     
-    def _get_system_prompt(self, current_date: str, day_of_week: str, current_datetime: str, custom_instructions: str = None) -> str:
+    def _get_system_prompt(self, current_date: str, day_of_week: str, current_datetime: str, custom_instructions: str = None, include_mcp: bool = True) -> str:
         """Build the system prompt with context"""
+        
+        # Build MCP tools section dynamically
+        mcp_tools_section = ""
+        if include_mcp:
+            try:
+                mcp_tool_defs = mcp_service.get_all_tools_for_llm()
+                if mcp_tool_defs:
+                    mcp_tools_section = "\n\n**ZERODHA/STOCK MARKET ACCESS (IMPORTANT)**:\nYou have DIRECT access to the user's Zerodha trading account via MCP tools. When the user asks about:\n"
+                    mcp_tools_section += "- Portfolio, holdings, stocks, investments → Use `mcp_zerodha_get_holdings`\n"
+                    mcp_tools_section += "- Positions, intraday trades → Use `mcp_zerodha_get_positions`\n"
+                    mcp_tools_section += "- Margins, funds, balance → Use `mcp_zerodha_get_margins`\n"
+                    mcp_tools_section += "- Orders placed today → Use `mcp_zerodha_get_orders`\n"
+                    mcp_tools_section += "- Stock prices, quotes → Use `mcp_zerodha_get_quote`\n"
+                    mcp_tools_section += "\n**YOU MUST USE THESE TOOLS** - do NOT say you don't have access. The user has connected their Zerodha account.\n"
+            except Exception as e:
+                logger.warning(f"Could not get MCP tools for prompt: {e}")
+        
         system_content = f"""You are Vyana, a cheerful, intelligent, and highly capable personal assistant with a friendly, feminine persona. You are here to help the user with their daily life, work, and productivity in a warm and engaging way.
 
 Current Date: {current_date} ({day_of_week})
@@ -110,7 +127,7 @@ Tool Usage & Data Presentation:
 - **Summarization**: When a tool returns data (like stock holdings, calendar events, etc.), you MUST summarize it in natural language. **NEVER** output raw JSON, code blocks, or tool/function names unless the user explicitly asks for "technical details".
 - **No code formatting**: Do not use backticks or show code-like responses.
 - **Formatting**: Present lists as numbered items (1., 2., 3.). Each item must be on its own line, with a blank line between items. Do NOT use tables, boxed layouts, or multiple items on the same line.
-
+{mcp_tools_section}
 If the user's request requires a tool, you MUST call the appropriate tool. If no tool is needed, provide a helpful text response. Never provide an empty response."""
 
         if custom_instructions:
@@ -204,23 +221,31 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         # Get tools if enabled
         tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else []
         
+        # Log tool names for debugging
+        tool_names = [t.name for t in tools] if tools else []
+        logger.info(f"Agent graph created with {len(tools)} tools: {tool_names[:10]}{'...' if len(tool_names) > 10 else ''}")
+        
         # Bind tools to LLM
         if tools:
             llm_with_tools = llm.bind_tools(tools)
         else:
             llm_with_tools = llm
         
+        # Capture mcp_enabled for closure
+        include_mcp_in_prompt = mcp_enabled
+        
         # Define the agent node
         def agent_node(state: AgentState):
             """The main agent node that calls the LLM"""
             messages = state["messages"]
             
-            # Build system message
+            # Build system message with MCP awareness
             system_prompt = self._get_system_prompt(
                 current_date=state.get("current_date", ""),
                 day_of_week=state.get("day_of_week", ""),
                 current_datetime=state.get("current_time", ""),
-                custom_instructions=state.get("custom_instructions", "")
+                custom_instructions=state.get("custom_instructions", ""),
+                include_mcp=include_mcp_in_prompt
             )
             
             # Prepend system message
@@ -228,6 +253,10 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
             
             # Call LLM
             response = llm_with_tools.invoke(full_messages)
+            
+            # Log if tool calls were made
+            if hasattr(response, "tool_calls") and response.tool_calls:
+                logger.info(f"LLM requested tool calls: {[tc['name'] for tc in response.tool_calls]}")
             
             return {"messages": [response]}
         

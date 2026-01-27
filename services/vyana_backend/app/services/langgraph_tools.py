@@ -528,26 +528,86 @@ def get_all_tools():
 def get_mcp_tools_as_langchain():
     """Dynamically convert MCP tools to LangChain tools"""
     from langchain_core.tools import StructuredTool
+    from pydantic import create_model
+    from typing import Any, Optional
     
     mcp_tools = []
     mcp_tool_defs = mcp_service.get_all_tools_for_llm()
+    
+    logger.info(f"Converting {len(mcp_tool_defs)} MCP tools to LangChain format")
     
     for tool_def in mcp_tool_defs:
         func_def = tool_def.get("function", {})
         tool_name = func_def.get("name", "")
         description = func_def.get("description", "")
+        parameters = func_def.get("parameters", {})
+        
+        logger.debug(f"Converting MCP tool: {tool_name}")
         
         # Create a closure to capture the tool name
         def make_mcp_executor(name):
             def execute_mcp(**kwargs):
-                return mcp_service.execute_tool_sync(name, kwargs)
+                logger.info(f"Executing MCP tool: {name} with args: {kwargs}")
+                result = mcp_service.execute_tool_sync(name, kwargs)
+                logger.info(f"MCP tool {name} result: {result[:200] if result else 'None'}...")
+                return result
             return execute_mcp
         
-        mcp_tool = StructuredTool.from_function(
-            func=make_mcp_executor(tool_name),
-            name=tool_name,
-            description=description,
-        )
-        mcp_tools.append(mcp_tool)
+        try:
+            # Build dynamic Pydantic model from parameters schema
+            properties = parameters.get("properties", {})
+            required_fields = parameters.get("required", [])
+            
+            field_definitions = {}
+            for prop_name, prop_schema in properties.items():
+                prop_type = prop_schema.get("type", "string")
+                prop_desc = prop_schema.get("description", "")
+                
+                # Map JSON schema types to Python types
+                type_mapping = {
+                    "string": str,
+                    "integer": int,
+                    "number": float,
+                    "boolean": bool,
+                    "array": list,
+                    "object": dict,
+                }
+                python_type = type_mapping.get(prop_type, str)
+                
+                if prop_name in required_fields:
+                    field_definitions[prop_name] = (python_type, ...)
+                else:
+                    field_definitions[prop_name] = (Optional[python_type], None)
+            
+            # Create Pydantic model if there are fields
+            if field_definitions:
+                ArgsModel = create_model(f"{tool_name}_args", **field_definitions)
+                mcp_tool = StructuredTool.from_function(
+                    func=make_mcp_executor(tool_name),
+                    name=tool_name,
+                    description=description,
+                    args_schema=ArgsModel,
+                )
+            else:
+                # No parameters - simple tool
+                mcp_tool = StructuredTool.from_function(
+                    func=make_mcp_executor(tool_name),
+                    name=tool_name,
+                    description=description,
+                )
+            
+            mcp_tools.append(mcp_tool)
+            logger.debug(f"Successfully converted MCP tool: {tool_name}")
+            
+        except Exception as e:
+            logger.error(f"Failed to convert MCP tool {tool_name}: {e}")
+            # Fallback: create tool without schema
+            mcp_tool = StructuredTool.from_function(
+                func=make_mcp_executor(tool_name),
+                name=tool_name,
+                description=description,
+            )
+            mcp_tools.append(mcp_tool)
     
+    logger.info(f"Converted {len(mcp_tools)} MCP tools successfully")
     return mcp_tools
