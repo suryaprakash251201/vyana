@@ -15,9 +15,9 @@ class HomeScreen extends StatelessWidget {
       if (location.startsWith('/chat')) return 1;
       if (location.startsWith('/tools')) return 2;
       // Tasks/Calendar/Mail should highlight Tools tab
-      if (location.startsWith('/tasks')) return 2;
-      if (location.startsWith('/calendar')) return 2;
-      if (location.startsWith('/mail')) return 2;
+      if (location.startsWith('/tools/tasks')) return 2;
+      if (location.startsWith('/tools/calendar')) return 2;
+      if (location.startsWith('/tools/mail')) return 2;
       if (location.startsWith('/settings')) return 3;
       return 0;
     }

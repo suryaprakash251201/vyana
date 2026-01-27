@@ -100,30 +100,32 @@ final _router = GoRouter(
         GoRoute(
           path: '/tools',
           builder: (context, state) => const ToolsScreen(),
-        ),
-        GoRoute(
-          path: '/reminders',
-          builder: (context, state) => const RemindersScreen(),
-        ),
-        GoRoute(
-          path: '/tasks',
-          builder: (context, state) => const TasksScreen(),
-        ),
-        GoRoute(
-          path: '/calendar',
-          builder: (context, state) => const CalendarScreen(),
-        ),
-        GoRoute(
-          path: '/mail',
-          builder: (context, state) => const MailScreen(),
+          routes: [
+            GoRoute(
+              path: 'tasks',
+              builder: (context, state) => const TasksScreen(),
+            ),
+            GoRoute(
+              path: 'calendar',
+              builder: (context, state) => const CalendarScreen(),
+            ),
+            GoRoute(
+              path: 'mail',
+              builder: (context, state) => const MailScreen(),
+            ),
+            GoRoute(
+              path: 'reminders',
+              builder: (context, state) => const RemindersScreen(),
+            ),
+            GoRoute(
+              path: 'contacts',
+              builder: (context, state) => const ContactsScreen(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsScreen(),
-        ),
-        GoRoute(
-          path: '/contacts',
-          builder: (context, state) => const ContactsScreen(),
         ),
       ],
     ),

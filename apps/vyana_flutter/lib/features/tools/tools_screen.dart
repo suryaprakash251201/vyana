@@ -6,15 +6,168 @@ import 'package:gap/gap.dart';
 import 'package:vyana_flutter/core/sound_service.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 
+const _fallbackAiTools = [
+  {
+    'name': 'create_task',
+    'description': 'Creates a new task in the user\'s Google Tasks to-do list.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'list_tasks',
+    'description': 'Lists all uncompleted tasks from Google Tasks.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'complete_task',
+    'description': 'Marks a task as completed.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'update_task',
+    'description': 'Updates an existing task\'s title or due date.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'delete_task',
+    'description': 'Deletes a task.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'search_tasks',
+    'description': 'Search tasks by keyword.',
+    'category': 'Tasks',
+  },
+  {
+    'name': 'get_calendar_today',
+    'description': 'Gets calendar events for today.',
+    'category': 'Calendar',
+  },
+  {
+    'name': 'get_calendar_events',
+    'description': 'Gets calendar events for a specific date.',
+    'category': 'Calendar',
+  },
+  {
+    'name': 'get_calendar_range',
+    'description': 'Gets upcoming calendar events for the next N days.',
+    'category': 'Calendar',
+  },
+  {
+    'name': 'create_calendar_event',
+    'description': 'Creates a calendar event.',
+    'category': 'Calendar',
+  },
+  {
+    'name': 'get_unread_emails_summary',
+    'description': 'Gets a summary of recent unread emails.',
+    'category': 'Email',
+  },
+  {
+    'name': 'summarize_emails',
+    'description': 'Summarizes recent emails.',
+    'category': 'Email',
+  },
+  {
+    'name': 'send_email',
+    'description': 'Sends an email.',
+    'category': 'Email',
+  },
+  {
+    'name': 'search_emails',
+    'description': 'Search emails by keyword.',
+    'category': 'Email',
+  },
+  {
+    'name': 'add_contact',
+    'description': 'Adds a new contact.',
+    'category': 'Contacts',
+  },
+  {
+    'name': 'get_email_address',
+    'description': 'Finds email address for a contact.',
+    'category': 'Contacts',
+  },
+  {
+    'name': 'get_phone_number',
+    'description': 'Finds phone number for a contact.',
+    'category': 'Contacts',
+  },
+  {
+    'name': 'list_contacts',
+    'description': 'Lists all contacts.',
+    'category': 'Contacts',
+  },
+  {
+    'name': 'take_notes',
+    'description': 'Saves a note.',
+    'category': 'Notes',
+  },
+  {
+    'name': 'get_notes',
+    'description': 'Retrieves recent notes.',
+    'category': 'Notes',
+  },
+  {
+    'name': 'get_weather',
+    'description': 'Gets current weather for a city.',
+    'category': 'Weather',
+  },
+  {
+    'name': 'get_forecast',
+    'description': 'Gets a short weather forecast for a city.',
+    'category': 'Weather',
+  },
+  {
+    'name': 'web_search',
+    'description': 'Searches the web for information.',
+    'category': 'Search',
+  },
+  {
+    'name': 'get_news',
+    'description': 'Gets latest news on a topic.',
+    'category': 'Search',
+  },
+  {
+    'name': 'calculate',
+    'description': 'Evaluates a mathematical expression.',
+    'category': 'Utilities',
+  },
+  {
+    'name': 'get_time_now',
+    'description': 'Returns the current time and date in IST.',
+    'category': 'Utilities',
+  },
+  {
+    'name': 'convert_currency',
+    'description': 'Converts currency from one type to another.',
+    'category': 'Utilities',
+  },
+  {
+    'name': 'convert_units',
+    'description': 'Converts units (length, weight, temperature).',
+    'category': 'Utilities',
+  },
+  {
+    'name': 'daily_digest',
+    'description': 'Creates a quick daily digest of tasks, calendar, and unread email count.',
+    'category': 'Summary',
+  },
+];
+
 // State for AI tools
+bool _loggedAiToolsError = false;
 final aiToolsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   try {
     final apiClient = ref.read(apiClientProvider);
     final response = await apiClient.get('/tools/list');
-    return List<Map<String, dynamic>>.from(response['tools'] ?? []);
+    final tools = List<Map<String, dynamic>>.from(response['tools'] ?? []);
+    return tools.isNotEmpty ? tools : List<Map<String, dynamic>>.from(_fallbackAiTools);
   } catch (e) {
-    debugPrint('Error fetching AI tools: $e');
-    return [];
+    if (!_loggedAiToolsError) {
+      debugPrint('Error fetching AI tools: $e');
+      _loggedAiToolsError = true;
+    }
+    return List<Map<String, dynamic>>.from(_fallbackAiTools);
   }
 });
 
@@ -61,35 +214,35 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
         subtitle: 'Plan & finish',
         icon: Icons.check_circle_outline,
         color: AppColors.successGreen,
-        onTap: () => context.go('/tasks'),
+        onTap: () => context.go('/tools/tasks'),
       ),
       _AppToolItem(
         title: 'Calendar',
         subtitle: 'Your schedule',
         icon: Icons.calendar_today,
         color: AppColors.accentPink,
-        onTap: () => context.go('/calendar'),
+        onTap: () => context.go('/tools/calendar'),
       ),
       _AppToolItem(
         title: 'Mail',
         subtitle: 'Inbox focus',
         icon: Icons.mail_outline,
         color: Colors.orange,
-        onTap: () => context.go('/mail'),
+        onTap: () => context.go('/tools/mail'),
       ),
       _AppToolItem(
         title: 'Reminders',
         subtitle: 'Never miss',
         icon: Icons.alarm,
         color: AppColors.primaryPurple,
-        onTap: () => context.go('/reminders'),
+        onTap: () => context.go('/tools/reminders'),
       ),
       _AppToolItem(
         title: 'Contacts',
         subtitle: 'People & emails',
         icon: Icons.contacts,
         color: Colors.blueAccent,
-        onTap: () => context.go('/contacts'),
+        onTap: () => context.go('/tools/contacts'),
       ),
       _AppToolItem(
         title: 'Test Sound',
@@ -112,7 +265,9 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryPurple.withOpacity(0.08),
+              theme.brightness == Brightness.dark 
+                  ? AppColors.darkBackground 
+                  : const Color(0xFFF8FAFC),
               theme.scaffoldBackgroundColor,
             ],
           ),
@@ -136,6 +291,14 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
                             ),
                           ),
                           const Spacer(),
+                          IconButton(
+                            onPressed: () {
+                              ref.invalidate(aiToolsProvider);
+                              ref.invalidate(mcpServersProvider);
+                            },
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Refresh tools',
+                          ),
                           aiToolsAsync.when(
                             data: (tools) => _buildPill('${tools.length} AI'),
                             loading: () => const SizedBox(

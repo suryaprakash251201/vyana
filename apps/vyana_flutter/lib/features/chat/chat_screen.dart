@@ -11,6 +11,9 @@ import 'package:vyana_flutter/core/theme.dart';
 import 'package:vyana_flutter/core/api_client.dart';
 import 'package:vyana_flutter/features/chat/chat_provider.dart';
 import 'package:vyana_flutter/features/chat/widgets/chat_bubble.dart';
+import 'package:vyana_flutter/features/chat/widgets/multi_color_loader.dart';
+import 'package:vyana_flutter/core/widgets/animated_gradient_border.dart';
+import 'dart:math' as math;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 
@@ -557,67 +560,72 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 800),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
+        child: AnimatedGradientBorder(
+          isActive: chatState.isLoading,
+          borderWidth: 4,
+          borderRadius: BorderRadius.circular(50),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 800),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(50),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(
+                color: _isListening
+                    ? AppColors.errorRed.withOpacity(0.5)
+                    : theme.colorScheme.outline.withOpacity(0.1),
               ),
-            ],
-            border: Border.all(
-              color: _isListening 
-                  ? AppColors.errorRed.withOpacity(0.5) 
-                  : theme.colorScheme.outline.withOpacity(0.1),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Voice Button (Left)
-              _buildVoiceButton(theme),
-              
-              // Text Area
-              Expanded(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 120),
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: _isListening
-                          ? "Listening..."
-                          : (_isProcessingAudio ? "Processing..." : "Ask anything..."),
-                      hintStyle: TextStyle(
-                        color: _isListening
-                            ? AppColors.errorRed
-                            : Colors.grey.shade400,
-                        fontSize: 16,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Voice Button (Left)
+                _buildVoiceButton(theme),
+
+                // Text Area
+                Expanded(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        hintText: _isListening
+                            ? "Listening..."
+                            : (_isProcessingAudio ? "Processing..." : "Ask anything..."),
+                        hintStyle: TextStyle(
+                          color: _isListening
+                              ? AppColors.errorRed
+                              : Colors.grey.shade400,
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
-                      ),
+                      style: const TextStyle(fontSize: 16),
+                      onSubmitted: (_) => _sendMessage(),
+                      enabled: !_isListening && !_isProcessingAudio,
+                      onTap: () => setState(() {}),
                     ),
-                    style: const TextStyle(fontSize: 16),
-                    onSubmitted: (_) => _sendMessage(),
-                    enabled: !_isListening && !_isProcessingAudio,
-                    onTap: () => setState(() {}),
                   ),
                 ),
-              ),
 
-              // Send Button (Right)
-              _buildSendButton(theme, chatState),
-            ],
+                // Send Button (Right)
+                _buildSendButton(theme, chatState),
+              ],
+            ),
           ),
         ),
       ),
@@ -657,10 +665,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : Icon(
-                    _isListening ? Icons.mic : Icons.mic_none_rounded,
-                    color: _isListening ? AppColors.errorRed : Colors.grey.shade600,
-                    size: 24,
+                : ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return const LinearGradient(
+                        colors: [
+                          Color(0xFF4285F4), // Google Blue
+                          Color(0xFFEA4335), // Google Red
+                          Color(0xFFFBBC05), // Google Yellow
+                          Color(0xFF34A853), // Google Green
+                        ],
+                        stops: [0.0, 0.45, 0.65, 1.0],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds);
+                    },
+                    blendMode: BlendMode.srcIn,
+                    child: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none_rounded,
+                      color: Colors.white, // Required for ShaderMask
+                      size: 24,
+                    ),
                   ),
           );
         },
@@ -702,12 +726,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               child: Center(
                 child: chatState.isLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                        width: 24,
+                        height: 24,
+                        child: MultiColorLoader(size: 24, strokeWidth: 3),
                       )
                     : Icon(
                         Icons.arrow_upward_rounded,

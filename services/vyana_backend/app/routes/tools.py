@@ -1,26 +1,99 @@
 from fastapi import APIRouter, HTTPException
-from app.services.groq_client import groq_client
 from typing import Optional, List
 
 router = APIRouter()
 
+# Fallback tool list to avoid empty UI if LangGraph tool loading fails
+_FALLBACK_TOOLS = [
+    {"name": "create_task", "description": "Creates a new task in the user's Google Tasks to-do list."},
+    {"name": "list_tasks", "description": "Lists all uncompleted tasks from Google Tasks."},
+    {"name": "complete_task", "description": "Marks a task as completed."},
+    {"name": "update_task", "description": "Updates an existing task's title or due date."},
+    {"name": "delete_task", "description": "Deletes a task."},
+    {"name": "search_tasks", "description": "Search tasks by keyword."},
+    {"name": "get_calendar_today", "description": "Gets calendar events for today."},
+    {"name": "get_calendar_events", "description": "Gets calendar events for a specific date."},
+    {"name": "get_calendar_range", "description": "Gets upcoming calendar events for the next N days."},
+    {"name": "create_calendar_event", "description": "Creates a calendar event."},
+    {"name": "get_unread_emails_summary", "description": "Gets a summary of recent unread emails."},
+    {"name": "summarize_emails", "description": "Summarizes recent emails."},
+    {"name": "send_email", "description": "Sends an email."},
+    {"name": "search_emails", "description": "Search emails by keyword."},
+    {"name": "add_contact", "description": "Adds a new contact."},
+    {"name": "get_email_address", "description": "Finds email address for a contact."},
+    {"name": "get_phone_number", "description": "Finds phone number for a contact."},
+    {"name": "list_contacts", "description": "Lists all contacts."},
+    {"name": "take_notes", "description": "Saves a note."},
+    {"name": "get_notes", "description": "Retrieves recent notes."},
+    {"name": "get_weather", "description": "Gets current weather for a city."},
+    {"name": "get_forecast", "description": "Gets a short weather forecast for a city."},
+    {"name": "web_search", "description": "Searches the web for information."},
+    {"name": "get_news", "description": "Gets latest news on a topic."},
+    {"name": "calculate", "description": "Evaluates a mathematical expression."},
+    {"name": "get_time_now", "description": "Returns the current time and date in IST."},
+    {"name": "convert_currency", "description": "Converts currency from one type to another."},
+    {"name": "convert_units", "description": "Converts units (length, weight, temperature)."},
+    {"name": "daily_digest", "description": "Creates a quick daily digest of tasks, calendar, and unread email count."},
+]
+
 @router.get("/list")
-async def list_tools():
-    """Return list of available AI tools"""
-    tools = groq_client._get_tools()
-    
-    # Format for frontend
+async def list_tools(include_mcp: bool = True):
+    """Return list of available AI tools (LangGraph + optional MCP tools)."""
     formatted_tools = []
-    for tool in tools:
-        if tool.get('type') == 'function':
-            func = tool['function']
-            formatted_tools.append({
-                'name': func['name'],
-                'description': func['description'],
-                'category': _categorize_tool(func['name'])
-            })
-    
-    return {"tools": formatted_tools}
+    try:
+        from app.services.langgraph_tools import get_all_tools, get_mcp_tools_as_langchain
+
+        tools = list(get_all_tools())
+        if include_mcp:
+            try:
+                tools.extend(get_mcp_tools_as_langchain())
+            except Exception:
+                # MCP tools are optional; return base tools if MCP is unavailable
+                pass
+
+        for tool in tools:
+            # LangChain tools expose name/description attributes
+            if hasattr(tool, "name") and hasattr(tool, "description"):
+                name = getattr(tool, "name")
+                description = getattr(tool, "description")
+                formatted_tools.append({
+                    "name": name,
+                    "description": description,
+                    "category": _categorize_tool(name),
+                })
+            # Backward compatibility (if any tool is still in OpenAI function format)
+            elif isinstance(tool, dict) and tool.get("type") == "function":
+                func = tool.get("function", {})
+                name = func.get("name", "")
+                description = func.get("description", "")
+                if name:
+                    formatted_tools.append({
+                        "name": name,
+                        "description": description,
+                        "category": _categorize_tool(name),
+                    })
+
+        if formatted_tools:
+            return {"tools": formatted_tools}
+    except Exception:
+        # Fall through to fallback list below
+        pass
+
+    fallback = [
+        {
+            "name": t["name"],
+            "description": t["description"],
+            "category": _categorize_tool(t["name"]),
+        }
+        for t in _FALLBACK_TOOLS
+    ]
+    return {"tools": fallback}
+
+
+@router.get("/")
+async def list_tools_root():
+    """Alias for /tools/list (helpful for quick checks)."""
+    return await list_tools()
 
 def _categorize_tool(name: str) -> str:
     """Categorize tools by function"""
