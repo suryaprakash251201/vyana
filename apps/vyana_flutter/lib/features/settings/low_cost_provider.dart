@@ -34,13 +34,22 @@ class LowCostSettingsNotifier extends AsyncNotifier<LowCostSettingsState> {
   static const _keyEnabled = 'lowCostEnabled';
   static const _keyMaxChars = 'lowCostMaxChars';
   static const _keyFallbackModel = 'lowCostFallbackModel';
+  static const _validModels = ['deepseek-chat', 'deepseek-reasoner'];
+  static const _defaultModel = 'deepseek-chat';
 
   @override
   Future<LowCostSettingsState> build() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_keyEnabled) ?? true;
     final maxChars = prefs.getInt(_keyMaxChars) ?? 1200;
-    final fallbackModel = prefs.getString(_keyFallbackModel) ?? 'llama-3.1-8b-instant';
+    var fallbackModel = prefs.getString(_keyFallbackModel) ?? _defaultModel;
+    
+    // Migrate old models to DeepSeek
+    if (!_validModels.contains(fallbackModel)) {
+      fallbackModel = _defaultModel;
+      await prefs.setString(_keyFallbackModel, fallbackModel);
+    }
+    
     return LowCostSettingsState(
       enabled: enabled,
       maxInputChars: maxChars,
@@ -49,7 +58,7 @@ class LowCostSettingsNotifier extends AsyncNotifier<LowCostSettingsState> {
   }
 
   Future<void> setEnabled(bool value) async {
-    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: _defaultModel);
     state = AsyncValue.data(current.copyWith(enabled: value));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyEnabled, value);
@@ -57,14 +66,14 @@ class LowCostSettingsNotifier extends AsyncNotifier<LowCostSettingsState> {
 
   Future<void> setMaxInputChars(int value) async {
     final normalized = value.clamp(200, 4000);
-    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: _defaultModel);
     state = AsyncValue.data(current.copyWith(maxInputChars: normalized));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyMaxChars, normalized);
   }
 
   Future<void> setFallbackModel(String value) async {
-    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: 'llama-3.1-8b-instant');
+    final current = state.value ?? const LowCostSettingsState(enabled: true, maxInputChars: 1200, fallbackModel: _defaultModel);
     state = AsyncValue.data(current.copyWith(fallbackModel: value));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyFallbackModel, value);

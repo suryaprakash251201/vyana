@@ -538,11 +538,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Text('Fallback model', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                             const Gap(8),
                             DropdownButtonFormField<String>(
-                              value: lowCost.fallbackModel,
+                              value: _deepseekModels.any((m) => m.id == lowCost.fallbackModel)
+                                  ? lowCost.fallbackModel
+                                  : _deepseekModels.first.id,
                               items: _deepseekModels
                                   .map((model) => DropdownMenuItem(
                                         value: model.id,
-                                        child: Text('${model.name} (Groq)'),
+                                        child: Text(model.name),
                                       ))
                                   .toList(),
                               onChanged: lowCost.enabled
