@@ -11,6 +11,7 @@ groq>=0.4.0,<1.0.0
 langgraph>=0.2.0,<1.0.0
 langchain>=0.3.0,<1.0.0
 langchain-groq>=0.2.0,<1.0.0
+langchain-openai>=0.2.0,<1.0.0
 langchain-core>=0.3.0,<1.0.0
 
 # Google APIs

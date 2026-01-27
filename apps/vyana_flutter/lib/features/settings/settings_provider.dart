@@ -52,7 +52,7 @@ class Settings extends _$Settings {
       toolsEnabled: prefs.getBool('toolsEnabled') ?? true,
       tamilMode: prefs.getBool('tamilMode') ?? false,
       isDarkTheme: prefs.getBool('isDarkTheme') ?? false,
-      geminiModel: prefs.getString('geminiModel') ?? 'llama-3.1-8b-instant',
+      geminiModel: prefs.getString('geminiModel') ?? 'openrouter/deepseek/deepseek-chat',
       memoryEnabled: prefs.getBool('memoryEnabled') ?? true,
       mcpEnabled: prefs.getBool('mcpEnabled') ?? true,
       responseStyle: prefs.getString('responseStyle') ?? 'Balanced',

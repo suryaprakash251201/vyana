@@ -26,18 +26,31 @@ class _ModelOption {
 }
 
 const List<_ModelOption> _groqModels = [
-  // Tool Calling Models (Recommended)
+  // DeepSeek Models (via OpenRouter) - Best for reasoning and coding
   _ModelOption(
-    id: 'openai/gpt-oss-20b',
-    name: 'GPT OSS 20B',
-    description: 'Excellent tool calling support. Recommended for Vyana.',
+    id: 'openrouter/deepseek/deepseek-chat',
+    name: 'DeepSeek Chat',
+    description: 'Excellent reasoning, coding & tool calling. Very cost effective.',
     badge: 'Recommended',
   ),
   _ModelOption(
-    id: 'openai/gpt-oss-120b',
-    name: 'GPT OSS 120B',
-    description: 'Highest quality with great tool calling support.',
-    badge: 'Quality',
+    id: 'openrouter/deepseek/deepseek-r1',
+    name: 'DeepSeek R1',
+    description: 'State-of-the-art reasoning model with chain-of-thought.',
+    badge: 'Reasoning',
+  ),
+  _ModelOption(
+    id: 'openrouter/deepseek/deepseek-r1-0528',
+    name: 'DeepSeek R1 (Latest)',
+    description: 'Latest R1 with improved reasoning capabilities.',
+    badge: 'New',
+  ),
+  // Groq Models - Fast inference
+  _ModelOption(
+    id: 'llama-3.1-70b-versatile',
+    name: 'Llama 3.1 70B',
+    description: 'Versatile model with good tool calling. Fast on Groq.',
+    badge: 'Fast',
   ),
   _ModelOption(
     id: 'meta-llama/llama-4-scout-17b-16e-instruct',

@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Search API (Optional - for web search)
     # Get free API key from: https://serpapi.com/
     SERP_API_KEY: str = ""
+    
+    # OpenRouter API (Optional - for DeepSeek and other models)
+    # Get API key from: https://openrouter.ai/keys
+    OPENROUTER_API_KEY: str = ""
 
     # Feature Toggles (Can be overriden by env or at runtime via API if we adding mutable state)
     ENABLE_TOOLS: bool = True

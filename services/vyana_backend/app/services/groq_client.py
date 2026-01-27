@@ -20,6 +20,7 @@ from langgraph.graph.message import add_messages
 from app.config import settings
 from app.services.langgraph_tools import get_all_tools, get_mcp_tools_as_langchain
 from app.services.mcp_service import mcp_service
+from app.services.openrouter_client import openrouter_client, is_openrouter_model
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -151,7 +152,11 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
     
     def _select_model(self, requested_model: str, tools_enabled: bool, user_text: str) -> str:
         """Choose a model based on request and cost controls."""
-        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi"]
+        # OpenRouter models - pass through directly
+        if requested_model and is_openrouter_model(requested_model):
+            return requested_model
+        
+        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi", "deepseek"]
         if requested_model and any(p in requested_model.lower() for p in valid_prefixes):
             return requested_model
         # Prefer low-cost model for short, non-tool requests
@@ -206,8 +211,25 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
     def _create_agent_graph(self, tools_enabled: bool = True, mcp_enabled: bool = True, model_name: str = None):
         """Create the LangGraph agent workflow"""
         
-        # Select appropriate LLM
-        if model_name and model_name != self.model_name:
+        # Get tools if enabled (do this first to pass to LLM)
+        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else []
+        
+        # Select appropriate LLM based on model provider
+        if model_name and is_openrouter_model(model_name):
+            # Use OpenRouter for DeepSeek and other OpenRouter models
+            if not openrouter_client.is_available():
+                logger.warning("OpenRouter requested but not configured, falling back to Groq")
+                llm = self.llm
+            else:
+                llm = openrouter_client.get_llm(
+                    model_name=model_name,
+                    temperature=self.temperature,
+                    max_tokens=self.max_output_tokens,
+                    tools=tools if tools else None
+                )
+                logger.info(f"Using OpenRouter model: {model_name}")
+        elif model_name and model_name != self.model_name:
+            # Use Groq with a different model
             api_key = getattr(settings, "GROQ_API_KEY", None) or os.environ.get("GROQ_API_KEY")
             llm = ChatGroq(
                 api_key=api_key,
@@ -218,15 +240,15 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         else:
             llm = self.llm
         
-        # Get tools if enabled
-        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else []
-        
         # Log tool names for debugging
         tool_names = [t.name for t in tools] if tools else []
         logger.info(f"Agent graph created with {len(tools)} tools: {tool_names[:10]}{'...' if len(tool_names) > 10 else ''}")
         
-        # Bind tools to LLM
-        if tools:
+        # Bind tools to LLM (skip if already bound for OpenRouter)
+        if model_name and is_openrouter_model(model_name) and openrouter_client.is_available():
+            # OpenRouter LLM already has tools bound
+            llm_with_tools = llm
+        elif tools:
             llm_with_tools = llm.bind_tools(tools)
         else:
             llm_with_tools = llm
