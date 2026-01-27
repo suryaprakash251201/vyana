@@ -437,46 +437,35 @@ class MCPService:
         
         # Run async in event loop - handle both sync and async contexts
         try:
-            # Check if we're already in an async context
             try:
-                loop = asyncio.get_running_loop()
-                # We're in an async context, use asyncio.ensure_future and run_coroutine_threadsafe
-                import concurrent.futures
-                future = asyncio.ensure_future(self.execute_tool(mcp_name, tool_name, arguments))
-                # Wait for result synchronously using threading
+                asyncio.get_running_loop()
+                # We're already in an event loop; run in a dedicated thread with its own loop
                 import threading
-                result_container = [None]
-                exception_container = [None]
+
+                result_container = {"result": None, "error": None}
                 done_event = threading.Event()
-                
-                async def run_and_store():
-                    try:
-                        result_container[0] = await self.execute_tool(mcp_name, tool_name, arguments)
-                    except Exception as e:
-                        exception_container[0] = e
-                    done_event.set()
-                
-                # Create a new thread to run the coroutine
+
                 def run_in_thread():
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
                     try:
-                        new_loop.run_until_complete(self.execute_tool(mcp_name, tool_name, arguments))
-                        result_container[0] = new_loop.run_until_complete(self.execute_tool(mcp_name, tool_name, arguments))
+                        result_container["result"] = new_loop.run_until_complete(
+                            self.execute_tool(mcp_name, tool_name, arguments)
+                        )
                     except Exception as e:
-                        exception_container[0] = e
+                        result_container["error"] = e
                     finally:
                         new_loop.close()
-                    done_event.set()
-                
+                        done_event.set()
+
                 thread = threading.Thread(target=run_in_thread)
                 thread.start()
-                thread.join(timeout=30)  # 30 second timeout
-                
-                if exception_container[0]:
-                    raise exception_container[0]
-                result = result_container[0]
-                
+                done_event.wait(timeout=30)
+
+                if result_container["error"]:
+                    raise result_container["error"]
+
+                result = result_container["result"]
             except RuntimeError:
                 # No running loop, create a new one
                 loop = asyncio.new_event_loop()

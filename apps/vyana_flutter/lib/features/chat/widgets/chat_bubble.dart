@@ -19,6 +19,15 @@ class _ChatBubbleState extends State<ChatBubble> {
   bool _animationComplete = false;
   String? _lastContent;
 
+  void _copyMessage(BuildContext context) {
+    final text = widget.message.content.trim();
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Copied to clipboard')),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -145,75 +154,83 @@ class _ChatBubbleState extends State<ChatBubble> {
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-        decoration: BoxDecoration(
-          gradient: isUser ? AppColors.primaryGradient : null,
-          color: isUser ? null : theme.colorScheme.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: isUser ? const Radius.circular(20) : const Radius.circular(4),
-            bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isUser 
-                  ? AppColors.primaryPurple.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+      child: GestureDetector(
+        onLongPress: isUser ? null : () => _copyMessage(context),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          decoration: BoxDecoration(
+            gradient: isUser ? AppColors.primaryGradient : null,
+            color: isUser ? null : theme.colorScheme.surface,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: isUser ? const Radius.circular(20) : const Radius.circular(4),
+              bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(20),
             ),
-          ],
-          border: isUser ? null : Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Animated text content with typing cursor
-            if (textToShow.isEmpty && !_animationComplete)
-              _buildTypingIndicator()
-            else
-              MarkdownBody(
-                data: showCursor ? '$textToShow▌' : textToShow,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                   p: theme.textTheme.bodyMedium?.copyWith(
-                       color: isUser ? Colors.white : theme.colorScheme.onSurface,
-                       height: 1.5,
-                       fontSize: 15,
-                   ),
-                   strong: TextStyle(fontWeight: FontWeight.w600, color: isUser ? Colors.white : theme.colorScheme.primary),
-                   code: TextStyle(
-                     backgroundColor: isUser ? Colors.white24 : theme.colorScheme.surfaceContainerHighest,
-                     color: isUser ? Colors.white : theme.colorScheme.primary,
-                     fontSize: 13,
-                     fontFamily: 'monospace',
-                   ),
-                   codeblockDecoration: BoxDecoration(
-                     color: isUser ? Colors.white10 : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                     borderRadius: BorderRadius.circular(8),
-                     border: Border.all(color: Colors.white.withOpacity(0.1)),
-                   ),
-                   blockquote: TextStyle(color: isUser ? Colors.white70 : theme.colorScheme.secondary),
-                   blockquoteDecoration: BoxDecoration(
-                     border: Border(left: BorderSide(color: isUser ? Colors.white30 : theme.colorScheme.secondary.withOpacity(0.3), width: 3)),
-                   ),
-                ),
-              ),
-            if (_animationComplete && !isUser) ...[
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Optional: Add timestamp or other meta info here
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: isUser 
+                    ? AppColors.primaryPurple.withOpacity(0.3)
+                    : Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
-          ],
+            border: isUser ? null : Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Animated text content with typing cursor
+              if (textToShow.isEmpty && !_animationComplete)
+                _buildTypingIndicator()
+              else
+                MarkdownBody(
+                  data: showCursor ? '$textToShow▌' : textToShow,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                     p: theme.textTheme.bodyMedium?.copyWith(
+                         color: isUser ? Colors.white : theme.colorScheme.onSurface,
+                         height: 1.5,
+                         fontSize: 15,
+                     ),
+                     strong: TextStyle(fontWeight: FontWeight.w600, color: isUser ? Colors.white : theme.colorScheme.primary),
+                     code: TextStyle(
+                       backgroundColor: isUser ? Colors.white24 : theme.colorScheme.surfaceContainerHighest,
+                       color: isUser ? Colors.white : theme.colorScheme.primary,
+                       fontSize: 13,
+                       fontFamily: 'monospace',
+                     ),
+                     codeblockDecoration: BoxDecoration(
+                       color: isUser ? Colors.white10 : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                       borderRadius: BorderRadius.circular(8),
+                       border: Border.all(color: Colors.white.withOpacity(0.1)),
+                     ),
+                     blockquote: TextStyle(color: isUser ? Colors.white70 : theme.colorScheme.secondary),
+                     blockquoteDecoration: BoxDecoration(
+                       border: Border(left: BorderSide(color: isUser ? Colors.white30 : theme.colorScheme.secondary.withOpacity(0.3), width: 3)),
+                     ),
+                  ),
+                ),
+              if (_animationComplete && !isUser) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () => _copyMessage(context),
+                      icon: const Icon(Icons.copy, size: 16),
+                      tooltip: 'Copy reply',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
