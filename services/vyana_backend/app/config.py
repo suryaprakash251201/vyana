@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     
     # DeepSeek API Configuration
     # Get API key from: https://platform.deepseek.com/
-    DEEPSEEK_API_KEY: str
+    DEEPSEEK_API_KEY: str = ""
     
     # OpenAI API Key (Optional - for Whisper audio transcription)
     # Get API key from: https://platform.openai.com/
