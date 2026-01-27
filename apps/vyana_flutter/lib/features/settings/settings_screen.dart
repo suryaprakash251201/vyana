@@ -25,75 +25,19 @@ class _ModelOption {
   });
 }
 
-const List<_ModelOption> _groqModels = [
-  // DeepSeek Models (via OpenRouter) - Best for reasoning and coding
+const List<_ModelOption> _deepseekModels = [
+  // DeepSeek Models - Direct API
   _ModelOption(
-    id: 'openrouter/deepseek/deepseek-chat',
+    id: 'deepseek-chat',
     name: 'DeepSeek Chat',
     description: 'Excellent reasoning, coding & tool calling. Very cost effective.',
     badge: 'Recommended',
   ),
   _ModelOption(
-    id: 'openrouter/deepseek/deepseek-r1',
-    name: 'DeepSeek R1',
-    description: 'State-of-the-art reasoning model with chain-of-thought.',
+    id: 'deepseek-reasoner',
+    name: 'DeepSeek Reasoner',
+    description: 'Advanced reasoning with chain-of-thought. Best for complex tasks.',
     badge: 'Reasoning',
-  ),
-  _ModelOption(
-    id: 'openrouter/deepseek/deepseek-r1-0528',
-    name: 'DeepSeek R1 (Latest)',
-    description: 'Latest R1 with improved reasoning capabilities.',
-    badge: 'New',
-  ),
-  // Groq Models - Fast inference
-  _ModelOption(
-    id: 'llama-3.1-70b-versatile',
-    name: 'Llama 3.1 70B',
-    description: 'Versatile model with good tool calling. Fast on Groq.',
-    badge: 'Fast',
-  ),
-  _ModelOption(
-    id: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    name: 'Llama 4 Scout',
-    description: 'Latest Llama model with strong tool calling.',
-    badge: 'New',
-  ),
-  _ModelOption(
-    id: 'qwen/qwen3-32b',
-    name: 'Qwen 3 32B',
-    description: 'Strong reasoning and tool calling capabilities.',
-    badge: 'Balanced',
-  ),
-  _ModelOption(
-    id: 'moonshotai/kimi-k2-instruct',
-    name: 'Kimi K2',
-    description: 'Advanced model with excellent tool use.',
-    badge: 'Quality',
-  ),
-  // Legacy Models
-  _ModelOption(
-    id: 'llama-3.1-8b-instant',
-    name: 'Llama 3.1 8B',
-    description: 'Fast, low cost, great for quick tasks and chat.',
-    badge: 'Fast',
-  ),
-  _ModelOption(
-    id: 'llama-3.3-70b-versatile',
-    name: 'Llama 3.3 70B',
-    description: 'Latest 70B variant with improved instruction following.',
-    badge: 'Quality',
-  ),
-  _ModelOption(
-    id: 'mixtral-8x7b-32768',
-    name: 'Mixtral 8x7B',
-    description: 'Strong for multi-step tasks with wide context.',
-    badge: 'Long context',
-  ),
-  _ModelOption(
-    id: 'gemma2-9b-it',
-    name: 'Gemma 2 9B',
-    description: 'Compact and efficient for daily assistant tasks.',
-    badge: 'Compact',
   ),
 ];
 
@@ -363,11 +307,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         DropdownButtonFormField<String>(
                           value: settings.geminiModel,
                           items: [
-                            ..._groqModels.map((model) => DropdownMenuItem(
+                            ..._deepseekModels.map((model) => DropdownMenuItem(
                                   value: model.id,
                                   child: Text('${model.name} (Groq)'),
                                 )),
-                            if (!_groqModels.any((model) => model.id == settings.geminiModel))
+                            if (!_deepseekModels.any((model) => model.id == settings.geminiModel))
                               DropdownMenuItem(
                                 value: settings.geminiModel,
                                 child: Text('${settings.geminiModel} (Custom)'),
@@ -615,7 +559,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             const Gap(8),
                             DropdownButtonFormField<String>(
                               value: lowCost.fallbackModel,
-                              items: _groqModels
+                              items: _deepseekModels
                                   .map((model) => DropdownMenuItem(
                                         value: model.id,
                                         child: Text('${model.name} (Groq)'),
@@ -870,7 +814,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _modelInfoCard(String modelId) {
     final theme = Theme.of(context);
-    final match = _groqModels.where((model) => model.id == modelId).toList();
+    final match = _deepseekModels.where((model) => model.id == modelId).toList();
     final model = match.isNotEmpty ? match.first : null;
     return Container(
       padding: const EdgeInsets.all(12),

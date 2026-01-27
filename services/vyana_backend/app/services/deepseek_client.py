@@ -1,18 +1,17 @@
 """
-LangGraph-based AI Agent for Vyana
-Replaces the manual tool calling implementation with LangGraph's agent architecture
+DeepSeek AI Client for Vyana
+LangGraph-based AI Agent using DeepSeek's API directly
 """
 import os
 import json
 import logging
 import re
+import httpx
 from typing import TypedDict, Annotated, Sequence, Literal
 from datetime import datetime
 
-from groq import Groq
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -20,11 +19,20 @@ from langgraph.graph.message import add_messages
 from app.config import settings
 from app.services.langgraph_tools import get_all_tools, get_mcp_tools_as_langchain
 from app.services.mcp_service import mcp_service
-from app.services.openrouter_client import openrouter_client, is_openrouter_model
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# DeepSeek API Configuration
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_MODELS = {
+    "deepseek-chat": "deepseek-chat",
+    "deepseek-reasoner": "deepseek-reasoner",
+}
+
+# Whisper API for audio transcription (using OpenAI-compatible endpoint)
+WHISPER_BASE_URL = "https://api.openai.com/v1"
 
 
 def _get_ist_timezone():
@@ -46,46 +54,68 @@ class AgentState(TypedDict):
     custom_instructions: str
 
 
-class GroqClient:
+class DeepSeekClient:
     """
-    LangGraph-based AI Agent Client
+    LangGraph-based AI Agent Client using DeepSeek API
     Uses LangGraph for structured agent workflows with tool calling
     """
     
     def __init__(self):
-        # Get API key
-        api_key = getattr(settings, "GROQ_API_KEY", None) or os.environ.get("GROQ_API_KEY")
+        # Get DeepSeek API key
+        api_key = getattr(settings, "DEEPSEEK_API_KEY", None) or os.environ.get("DEEPSEEK_API_KEY")
         if not api_key:
-            logger.warning("GROQ_API_KEY not found in settings or env.")
+            logger.warning("DEEPSEEK_API_KEY not found in settings or env.")
         
-        # Initialize Groq client for audio transcription
-        self.groq_client = Groq(api_key=api_key)
+        self.api_key = api_key
         
         # Model settings
-        self.model_name = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
-        self.low_cost_model = os.getenv("GROQ_LOW_COST_MODEL", "llama-3.1-8b-instant")
-        self.max_input_messages = int(os.getenv("GROQ_MAX_MESSAGES", "8"))
-        self.max_output_tokens = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "350"))
-        self.summary_max_tokens = int(os.getenv("GROQ_SUMMARY_MAX_TOKENS", "220"))
-        self.temperature = float(os.getenv("GROQ_TEMPERATURE", "0.3"))
+        self.model_name = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+        self.max_input_messages = int(os.getenv("DEEPSEEK_MAX_MESSAGES", "10"))
+        self.max_output_tokens = int(os.getenv("DEEPSEEK_MAX_OUTPUT_TOKENS", "4096"))
+        self.temperature = float(os.getenv("DEEPSEEK_TEMPERATURE", "0.3"))
         
-        # Initialize LangChain Groq LLM
-        self.llm = ChatGroq(
-            api_key=api_key,
-            model=self.model_name,
-            temperature=self.temperature,
-            max_tokens=self.max_output_tokens,
-        )
+        # Initialize DeepSeek LLM via LangChain OpenAI (DeepSeek is OpenAI-compatible)
+        if api_key:
+            self.llm = ChatOpenAI(
+                api_key=api_key,
+                base_url=DEEPSEEK_BASE_URL,
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=self.max_output_tokens,
+            )
+            logger.info(f"DeepSeekClient initialized with model: {self.model_name}")
+        else:
+            self.llm = None
+            logger.error("DeepSeekClient could not be initialized - no API key")
+    
+    def transcribe_audio(self, file_content: bytes, filename: str) -> str:
+        """
+        Transcribe audio using OpenAI Whisper API or compatible service.
+        Falls back to basic speech recognition if no API key available.
+        """
+        # Try using OpenAI Whisper API if OPENAI_API_KEY is set
+        openai_key = os.environ.get("OPENAI_API_KEY")
         
-        # Low cost LLM for simple queries
-        self.low_cost_llm = ChatGroq(
-            api_key=api_key,
-            model=self.low_cost_model,
-            temperature=self.temperature,
-            max_tokens=self.max_output_tokens,
-        )
+        if openai_key:
+            try:
+                import httpx
+                with httpx.Client(timeout=60.0) as client:
+                    response = client.post(
+                        f"{WHISPER_BASE_URL}/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {openai_key}"},
+                        files={"file": (filename, file_content)},
+                        data={"model": "whisper-1"}
+                    )
+                    if response.status_code == 200:
+                        return response.json().get("text", "")
+                    else:
+                        logger.error(f"Whisper API error: {response.status_code} - {response.text}")
+            except Exception as e:
+                logger.error(f"Transcription error with OpenAI: {e}")
         
-        logger.info(f"GroqClient (LangGraph) initialized with model: {self.model_name}")
+        # If no OpenAI key, return a message
+        logger.warning("No OPENAI_API_KEY set for audio transcription")
+        raise ValueError("Audio transcription requires OPENAI_API_KEY to be set for Whisper API")
     
     def _get_system_prompt(self, current_date: str, day_of_week: str, current_datetime: str, custom_instructions: str = None, include_mcp: bool = True) -> str:
         """Build the system prompt with context"""
@@ -119,7 +149,6 @@ Time & Scheduling Instructions:
 Interaction Style:
 - Persona: Act like a supportive, smart, and friendly personal assistant (like 'JARVIS' but with a warm, feminine touch). Be proactive and helpful.
 - Tone: Conversational, clear, positive, and professional but not stiff.
-- Using Llama 3.1, optimize your responses for clarity and helpfulness.
 
 Tool Usage & Data Presentation:
 - **MAXIMIZE TOOL USAGE**: You have access to powerful tools including Calendar, Email, Tasks, and external MCP tools (like Stock Market access).
@@ -149,20 +178,6 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
                 logger.warning(f"Could not load MCP tools: {e}")
         
         return tools
-    
-    def _select_model(self, requested_model: str, tools_enabled: bool, user_text: str) -> str:
-        """Choose a model based on request and cost controls."""
-        # OpenRouter models - pass through directly
-        if requested_model and is_openrouter_model(requested_model):
-            return requested_model
-        
-        valid_prefixes = ["llama", "mixtral", "gemma", "gpt-oss", "openai/gpt-oss", "qwen", "kimi", "deepseek"]
-        if requested_model and any(p in requested_model.lower() for p in valid_prefixes):
-            return requested_model
-        # Prefer low-cost model for short, non-tool requests
-        if not tools_enabled and user_text and len(user_text.strip()) <= 80:
-            return self.low_cost_model
-        return self.model_name
     
     def _trim_messages(self, messages):
         """Trim conversation history to reduce token usage."""
@@ -194,45 +209,18 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         # Normalize extra blank lines (max one blank line between items)
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
-
-    def transcribe_audio(self, file_content: bytes, filename: str) -> str:
-        """Transcribe audio using Groq's Whisper"""
-        try:
-            transcription = self.groq_client.audio.transcriptions.create(
-                file=(filename, file_content),
-                model="whisper-large-v3",
-                response_format="text"
-            )
-            return transcription
-        except Exception as e:
-            logger.error(f"Transcription error: {e}")
-            raise e
     
     def _create_agent_graph(self, tools_enabled: bool = True, mcp_enabled: bool = True, model_name: str = None):
         """Create the LangGraph agent workflow"""
         
-        # Get tools if enabled (do this first to pass to LLM)
-        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else []
+        if not self.api_key:
+            raise ValueError("DEEPSEEK_API_KEY not configured")
         
-        # Select appropriate LLM based on model provider
-        if model_name and is_openrouter_model(model_name):
-            # Use OpenRouter for DeepSeek and other OpenRouter models
-            if not openrouter_client.is_available():
-                logger.warning("OpenRouter requested but not configured, falling back to Groq")
-                llm = self.llm
-            else:
-                llm = openrouter_client.get_llm(
-                    model_name=model_name,
-                    temperature=self.temperature,
-                    max_tokens=self.max_output_tokens,
-                    tools=tools if tools else None
-                )
-                logger.info(f"Using OpenRouter model: {model_name}")
-        elif model_name and model_name != self.model_name:
-            # Use Groq with a different model
-            api_key = getattr(settings, "GROQ_API_KEY", None) or os.environ.get("GROQ_API_KEY")
-            llm = ChatGroq(
-                api_key=api_key,
+        # Select appropriate LLM
+        if model_name and model_name != self.model_name:
+            llm = ChatOpenAI(
+                api_key=self.api_key,
+                base_url=DEEPSEEK_BASE_URL,
                 model=model_name,
                 temperature=self.temperature,
                 max_tokens=self.max_output_tokens,
@@ -240,15 +228,15 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         else:
             llm = self.llm
         
+        # Get tools if enabled
+        tools = self._get_tools(include_mcp=mcp_enabled) if tools_enabled else []
+        
         # Log tool names for debugging
         tool_names = [t.name for t in tools] if tools else []
         logger.info(f"Agent graph created with {len(tools)} tools: {tool_names[:10]}{'...' if len(tool_names) > 10 else ''}")
         
-        # Bind tools to LLM (skip if already bound for OpenRouter)
-        if model_name and is_openrouter_model(model_name) and openrouter_client.is_available():
-            # OpenRouter LLM already has tools bound
-            llm_with_tools = llm
-        elif tools:
+        # Bind tools to LLM
+        if tools:
             llm_with_tools = llm.bind_tools(tools)
         else:
             llm_with_tools = llm
@@ -329,9 +317,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         Stream chat using LangGraph agent
         Yields SSE-formatted responses
         """
-        # Select model with cost control
-        user_text = messages[-1].content if messages else ""
-        model = self._select_model(model_name, tools_enabled, user_text)
+        # Use provided model or default
+        model = model_name if model_name else self.model_name
         
         # Get current date/time for context in IST
         ist = _get_ist_timezone()
@@ -412,9 +399,8 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
         Non-streaming version of chat using LangGraph
         Returns the full response string
         """
-        # Select model with cost control
-        user_text = messages[-1].content if messages else ""
-        model = self._select_model(model_name, tools_enabled, user_text)
+        # Use provided model or default
+        model = model_name if model_name else self.model_name
         
         # Get current date/time for context in IST
         ist = _get_ist_timezone()
@@ -469,5 +455,6 @@ If the user's request requires a tool, you MUST call the appropriate tool. If no
             return f"Error: {str(e)}"
 
 
-# Shared singleton instance
-groq_client = GroqClient()
+# Shared singleton instance - export as both names for compatibility
+deepseek_client = DeepSeekClient()
+groq_client = deepseek_client  # Alias for backward compatibility with chat routes

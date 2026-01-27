@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from app.services.groq_client import groq_client
+from app.services.deepseek_client import deepseek_client
 import logging
 
 router = APIRouter()
@@ -13,7 +13,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
     try:
         content = await file.read()
         logger.info(f"Transcribing audio file: {file.filename} size: {len(content)}")
-        transcription = groq_client.transcribe_audio(content, file.filename)
+        transcription = deepseek_client.transcribe_audio(content, file.filename)
         return {"text": transcription}
     except Exception as e:
         logger.error(f"Transcription error: {e}")

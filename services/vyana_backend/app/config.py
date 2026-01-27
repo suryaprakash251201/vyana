@@ -20,9 +20,16 @@ class Settings(BaseSettings):
             return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
     
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3-pro-preview"
-    GROQ_API_KEY: str
+    
+    # DeepSeek API Configuration
+    # Get API key from: https://platform.deepseek.com/
+    DEEPSEEK_API_KEY: str
+    
+    # OpenAI API Key (Optional - for Whisper audio transcription)
+    # Get API key from: https://platform.openai.com/
+    OPENAI_API_KEY: str = ""
 
     # Supabase is now OPTIONAL - contacts use local JSON storage
     SUPABASE_URL: str = ""
@@ -41,10 +48,6 @@ class Settings(BaseSettings):
     # Search API (Optional - for web search)
     # Get free API key from: https://serpapi.com/
     SERP_API_KEY: str = ""
-    
-    # OpenRouter API (Optional - for DeepSeek and other models)
-    # Get API key from: https://openrouter.ai/keys
-    OPENROUTER_API_KEY: str = ""
 
     # Feature Toggles (Can be overriden by env or at runtime via API if we adding mutable state)
     ENABLE_TOOLS: bool = True

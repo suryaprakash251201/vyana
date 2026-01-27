@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from app.services.groq_client import groq_client
+from app.services.deepseek_client import deepseek_client
 
 router = APIRouter()
 
@@ -18,11 +18,11 @@ class ChatRequest(BaseModel):
 @router.post("/stream")
 async def chat_stream(req: ChatRequest):
     return StreamingResponse(
-        groq_client.stream_chat(
+        deepseek_client.stream_chat(
             req.messages, 
             req.conversation_id or "default", 
             tools_enabled=req.settings.get("tools_enabled", True),
-            model_name=req.settings.get("model", "llama-3.1-8b-instant"),
+            model_name=req.settings.get("model", "deepseek-chat"),
             memory_enabled=req.settings.get("memory_enabled", True),
             custom_instructions=req.settings.get("custom_instructions", ""),
             mcp_enabled=req.settings.get("mcp_enabled", True),
@@ -33,11 +33,11 @@ async def chat_stream(req: ChatRequest):
 
 @router.post("/send")
 async def chat_send(req: ChatRequest):
-    response_content = await groq_client.chat_sync(
+    response_content = await deepseek_client.chat_sync(
         req.messages,
         req.conversation_id or "default",
         tools_enabled=req.settings.get("tools_enabled", True),
-        model_name=req.settings.get("model", "llama-3.1-8b-instant"),
+        model_name=req.settings.get("model", "deepseek-chat"),
         memory_enabled=req.settings.get("memory_enabled", True),
         custom_instructions=req.settings.get("custom_instructions", ""),
         mcp_enabled=req.settings.get("mcp_enabled", True)
