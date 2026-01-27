@@ -305,17 +305,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<String>(
-                          value: settings.geminiModel,
+                          value: _deepseekModels.any((m) => m.id == settings.geminiModel) 
+                              ? settings.geminiModel 
+                              : _deepseekModels.first.id,
                           items: [
                             ..._deepseekModels.map((model) => DropdownMenuItem(
                                   value: model.id,
-                                  child: Text('${model.name} (Groq)'),
+                                  child: Text(model.name),
                                 )),
-                            if (!_deepseekModels.any((model) => model.id == settings.geminiModel))
-                              DropdownMenuItem(
-                                value: settings.geminiModel,
-                                child: Text('${settings.geminiModel} (Custom)'),
-                              ),
                           ],
                           onChanged: (val) {
                             if (val != null) ref.read(settingsProvider.notifier).setModel(val);
@@ -326,27 +323,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                         const Gap(12),
-                        _modelInfoCard(settings.geminiModel),
-                        const Gap(12),
-                        TextField(
-                          controller: _customModelController,
-                          decoration: InputDecoration(
-                            labelText: 'Custom model ID',
-                            helperText: 'Paste any Groq model ID supported by your account',
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.check_circle_outline),
-                              onPressed: () {
-                                final value = _customModelController.text.trim();
-                                if (value.isNotEmpty) {
-                                  ref.read(settingsProvider.notifier).setModel(value);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Custom model applied')),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
+                        _modelInfoCard(
+                          _deepseekModels.any((m) => m.id == settings.geminiModel) 
+                              ? settings.geminiModel 
+                              : _deepseekModels.first.id
                         ),
                       ],
                     ),

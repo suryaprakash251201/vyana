@@ -47,12 +47,21 @@ class Settings extends _$Settings {
     if (normalizedBackendUrl != storedBackendUrl) {
       await prefs.setString('backendUrl', normalizedBackendUrl);
     }
+    
+    // Migrate old model IDs to DeepSeek
+    var storedModel = prefs.getString('geminiModel') ?? 'deepseek-chat';
+    const validModels = ['deepseek-chat', 'deepseek-reasoner'];
+    if (!validModels.contains(storedModel)) {
+      storedModel = 'deepseek-chat';
+      await prefs.setString('geminiModel', storedModel);
+    }
+    
     return SettingsState(
       backendUrl: normalizedBackendUrl,
       toolsEnabled: prefs.getBool('toolsEnabled') ?? true,
       tamilMode: prefs.getBool('tamilMode') ?? false,
       isDarkTheme: prefs.getBool('isDarkTheme') ?? false,
-      geminiModel: prefs.getString('geminiModel') ?? 'deepseek-chat',
+      geminiModel: storedModel,
       memoryEnabled: prefs.getBool('memoryEnabled') ?? true,
       mcpEnabled: prefs.getBool('mcpEnabled') ?? true,
       responseStyle: prefs.getString('responseStyle') ?? 'Balanced',
